@@ -1,2 +1,2 @@
-from widgets import *
-import widgets
+from .widgets import *
+from .utils import *
