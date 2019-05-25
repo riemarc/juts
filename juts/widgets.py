@@ -1,7 +1,8 @@
+from IPython.display import display
 import ipywidgets as iw
 
 
-class Widget:
+class JutsWidget:
     def __init__(self, widget):
         self.widget = widget
 
@@ -11,17 +12,20 @@ class Widget:
     def set_layout(self, layout):
         self.widget.layout = layout
 
+    def _repr_pretty_(self, *args):
+        display(self.widget)
 
-class LabeledList(Widget):
+
+class LabeledList(JutsWidget):
     def __init__(self, label, list_items):
-        label = iw.Label(label)
-        self.config_select_view = iw.Select(list_items)
+        self.label = iw.Label(label)
+        self.config_select_view = iw.Select(options=list_items)
 
-        widget = iw.VBox(children=[label, self.config_select_view])
+        widget = iw.VBox(children=[self.label, self.config_select_view])
         super(LabeledList, self).__init__(widget)
 
 
-class ConfigurationView(Widget):
+class ConfigurationView(JutsWidget):
     def __init__(self):
 
         widget = iw.VBox(children=[])
