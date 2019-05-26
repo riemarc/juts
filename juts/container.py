@@ -1,18 +1,23 @@
 from yamlordereddictloader import Dumper, Loader
 from collections import OrderedDict, Mapping
 from numbers import Number
-from pprint import pprint, pformat
+from pprint import pformat
 import ipywidgets as iw
 import yaml
 
 
 class Configuration(OrderedDict):
     def __init__(self, config):
-        ord_dict = Configuration.as_ordered_dict(config)
-        ord_config = [value for value in ord_dict.values()][0]
-        super(Configuration, self).__init__(ord_config)
+        if isinstance(config, Configuration):
+            self.name = config.name
+            super().__init__(config)
 
-        self.name = [key for key in ord_dict.keys()][0]
+        else:
+            ord_dict = Configuration.as_ordered_dict(config)
+            ord_config = [value for value in ord_dict.values()][0]
+            super().__init__(ord_config)
+            self.name = [key for key in ord_dict.keys()][0]
+
         self._locked = False
 
     def __repr__(self, *args, **kwargs):
@@ -44,7 +49,7 @@ class Configuration(OrderedDict):
 
         if len(config) > 1:
             raise ValueError(
-                "Configuration loading from dictionary/file needs a \n"
+                "Loading configuration from dictionary/file needs a \n"
                 "dictionary/file with only one configuration. Use \n"
                 "load_configurations() for multiple configurations.")
 
@@ -56,7 +61,7 @@ class Configuration(OrderedDict):
         for key, value in inter_config.items():
             if not isinstance(value, Mapping):
                 raise TypeError(
-                    "At the moment only depth-2 configurations allowed.")
+                    "Only depth-2 configurations allowed.")
 
             configuration.update({key: OrderedDict(value)})
             settings.update(value)
@@ -78,6 +83,26 @@ class Configuration(OrderedDict):
             return False
 
         return all([Configuration.is_valid_setting(st) for st in setting])
+
+
+def as_config_list(configs):
+    config_list = list()
+
+    if isinstance(configs, Configuration):
+        config_list.append(configs)
+
+    elif isinstance(configs, Mapping):
+        for key, value in configs.items():
+            config_list.append(Configuration({key: value}))
+
+    elif hasattr(configs, "__iter__"):
+        assert all(isinstance(conf, Configuration) for conf in configs)
+        config_list = list(configs)
+
+    else:
+        raise NotImplemented
+
+    return config_list
 
 
 def load_configurations(filename):
@@ -108,18 +133,17 @@ class Result(OrderedDict):
             result = dict()
         assert isinstance(result, Mapping)
 
-        super(Result, self).__init__(result)
+        super().__init__(result)
 
 
 class Job:
     def __init__(self, config, result=None):
-        assert isinstance(config, Configuration)
-        self.config = config
+        self._config = None
+        self.config = Configuration(config)
 
-        if result is None:
-            result = Result()
-        assert isinstance(result, Result)
-        self.result = result
+        self._result = None
+        if result is not None:
+            self.result = result
 
         progress_layout = iw.Layout(width="auto")
         self.progress = iw.FloatProgress(value=0,
@@ -128,3 +152,29 @@ class Job:
                                          bar_style='info',
                                          orientation='horizontal',
                                          layout=progress_layout)
+
+    def set_config(self, config):
+        if self._config is None:
+            assert isinstance(config, Configuration)
+            self._config = config
+
+        else:
+            raise ValueError("Once set, configuration is immutable.")
+
+    def get_config(self):
+        return self._config
+
+    config = property(get_config, set_config)
+
+    def set_result(self, result):
+        if self._result is None:
+            assert isinstance(result, Result)
+            self._result = result
+
+        else:
+            raise ValueError("Once set, result is immutable.")
+
+    def get_result(self):
+        return self._result
+
+    result = property(get_result, set_result)

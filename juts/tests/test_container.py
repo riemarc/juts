@@ -1,4 +1,5 @@
 from unittest import TestCase
+import juts as jt
 from juts import (Configuration, load_configurations, dump_configurations,
                   Job)
 from collections import OrderedDict
@@ -62,6 +63,19 @@ class TestConfiguration(TestCase):
         dump_configurations(filename, config_multiple)
         self.assertEqual(config_multiple, load_configurations(filename))
         os.remove(filename)
+
+    def test_as_config_list(self):
+        configs1 = jt.as_config_list(config_multiple)
+        configs2 = jt.as_config_list(configs1)
+        configs3 = jt.as_config_list(config_1)
+        configs4 = jt.as_config_list(Configuration(config_1))
+
+        configs = configs1 + configs2 + configs3 + configs4
+        assert all(isinstance(c, Configuration) for c in configs)
+
+        with self.assertRaises(AssertionError):
+            jt.as_config_list([config_1, Configuration(config_1)])
+
 
 
 class TestJob(TestCase):
