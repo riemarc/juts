@@ -121,8 +121,10 @@ class Job:
         assert isinstance(result, Result)
         self.result = result
 
+        progress_layout = iw.Layout(width="auto")
         self.progress = iw.FloatProgress(value=0,
                                          min=0,
                                          max=100,
                                          bar_style='info',
-                                         orientation='horizontal')
+                                         orientation='horizontal',
+                                         layout=progress_layout)
