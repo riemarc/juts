@@ -1,5 +1,6 @@
 from unittest import TestCase
-from juts import Configuration, load_configurations, dump_configurations
+from juts import (Configuration, load_configurations, dump_configurations,
+                  Job)
 from collections import OrderedDict
 import os
 
@@ -62,4 +63,9 @@ class TestConfiguration(TestCase):
         self.assertEqual(config_multiple, load_configurations(filename))
         os.remove(filename)
 
+
+class TestJob(TestCase):
+    def test_job(self):
+        config = Configuration(config_1)
+        Job(config)
 

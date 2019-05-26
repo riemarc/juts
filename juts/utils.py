@@ -1,6 +1,8 @@
 from yamlordereddictloader import Dumper, Loader
 from collections import OrderedDict, Mapping
 from numbers import Number
+from pprint import pprint, pformat
+import ipywidgets as iw
 import yaml
 
 
@@ -12,6 +14,13 @@ class Configuration(OrderedDict):
 
         self.name = [key for key in ord_dict.keys()][0]
         self._locked = False
+
+    def __repr__(self, *args, **kwargs):
+        prt = ("Name: {}\n"
+               "Configuration:\t{}").format(
+            self.name, pformat(list(self.items())).replace("\n", "\n\t\t"))
+
+        return prt
 
     def lock_configuration(self):
         self._locked = True
@@ -84,6 +93,36 @@ def load_configurations(filename):
 
 Dumper.ignore_aliases = lambda *args : True
 
+
 def dump_configurations(filename, config):
+    if isinstance(config, Configuration):
+        config = OrderedDict({config.name: config})
+
     with open(filename, "w") as f:
         yaml.dump(config, f, Dumper=Dumper, default_flow_style=False)
+
+
+class Result(OrderedDict):
+    def __init__(self, result=None):
+        if result is None:
+            result = dict()
+        assert isinstance(result, Mapping)
+
+        super(Result, self).__init__(result)
+
+
+class Job:
+    def __init__(self, config, result=None):
+        assert isinstance(config, Configuration)
+        self.config = config
+
+        if result is None:
+            result = Result()
+        assert isinstance(result, Result)
+        self.result = result
+
+        self.progress = iw.FloatProgress(value=0,
+                                         min=0,
+                                         max=100,
+                                         bar_style='info',
+                                         orientation='horizontal')
