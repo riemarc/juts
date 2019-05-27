@@ -110,10 +110,10 @@ class JobView(iw.VBox):
             description='Show Result', icon="eye")
         self.save_bt = iw.Button(
             description='Save Result', icon="save")
-        self.delete_bt = iw.Button(
+        self.discard_bt = iw.Button(
             description='Discard Job', icon="remove")
         self.header_box = iw.HBox(
-            children=[self.text, self.show_bt, self.save_bt, self.delete_bt])
+            children=[self.text, self.show_bt, self.save_bt, self.discard_bt])
 
         self.progress_label = iw.Label("Progress")
         self.config_label = iw.Label("Configuration")
@@ -214,6 +214,9 @@ class SchedulerForm(iw.GridBox):
                 ''')
 
         super().__init__(grid_items, layout=grid_layout)
+
+    def add_configs(self, configs):
+        self.config_list.add_items(as_config_list(configs))
 
 
 class VisualizerForm(iw.VBox):

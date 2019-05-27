@@ -25,6 +25,6 @@ class TestWidgets(TestCase):
         jt.ConfigurationView(config)
         jt.JobView()
         jt.JobView(job)
-        ui = jt.get_user_interface()
+        ui = jt.UserInterface()
         ui.add_configs(config)
 
