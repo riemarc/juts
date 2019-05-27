@@ -17,7 +17,7 @@ class SchedulerInterface(SchedulerForm):
 
         self.job_view.show_bt.observe(self.on_jv_show, names="value")
         self.job_view.save_bt.observe(self.on_jv_save, names="value")
-        self.job_view.delete_bt.observe(self.on_jv_discard, names="value")
+        self.job_view.discard_bt.observe(self.on_jv_discard, names="value")
 
     def on_config_change(self, change):
         self.view_tab.selected_index = 0

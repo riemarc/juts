@@ -1,5 +1,6 @@
 from unittest import TestCase
 import juts as jt
+import time
 from juts import (Configuration, load_configurations, dump_configurations,
                   Job)
 from collections import OrderedDict
@@ -81,5 +82,14 @@ class TestConfiguration(TestCase):
 class TestJob(TestCase):
     def test_job(self):
         config = Configuration(config_1)
-        Job(config)
+
+        def process(s, process_queue=None, return_dict=None):
+            for i in range(10):
+                return_dict.update({i:i})
+                process_queue.put([i])
+                time.sleep(.5)
+
+        job = Job(config, process)
+        job.start()
+        job.join()
 

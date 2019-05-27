@@ -1,8 +1,12 @@
+from collections import OrderedDict, Mapping, deque
 from yamlordereddictloader import Dumper, Loader
-from collections import OrderedDict, Mapping
+from multiprocessing import Pool, Process, Queue, Manager, cpu_count
+from queue import Empty
+from threading import Thread
 from numbers import Number
 from pprint import pformat
 import ipywidgets as iw
+import time
 import yaml
 
 
@@ -136,10 +140,12 @@ class Result(OrderedDict):
         super().__init__(result)
 
 
-class Job:
-    def __init__(self, config, result=None):
-        self._config = None
-        self.config = Configuration(config)
+class Job(Thread):
+    def __init__(self, config, handle, result=None):
+        super().__init__()
+
+        self._config = config
+        self._handle = handle
 
         self._result = None
         if result is not None:
@@ -153,18 +159,15 @@ class Job:
                                          orientation='horizontal',
                                          layout=progress_layout)
 
-    def set_config(self, config):
-        if self._config is None:
-            assert isinstance(config, Configuration)
-            self._config = config
-
-        else:
-            raise ValueError("Once set, configuration is immutable.")
-
     def get_config(self):
         return self._config
 
-    config = property(get_config, set_config)
+    config = property(get_config)
+
+    def get_handle(self):
+        return self._handle
+
+    handle = property(get_handle)
 
     def set_result(self, result):
         if self._result is None:
@@ -178,3 +181,85 @@ class Job:
         return self._result
 
     result = property(get_result, set_result)
+
+    def run(self):
+        process_queue = Queue()
+        manager = Manager()
+        return_dict = manager.dict()
+        process = Process(target=self.handle,
+                          args=(self.config,),
+                          kwargs=dict(return_dict=return_dict,
+                                      process_queue=process_queue))
+        process.start()
+
+        while process.is_alive():
+            try:
+                if not process_queue.empty():
+                    status = process_queue.get(timeout=10)
+
+                else:
+                    status = None
+                    time.sleep(1)
+
+            except Empty:
+                status = None
+
+            if status is not None:
+                self.progress.value = status[0]
+
+        self.result = Result(dict(return_dict))
+        process.join()
+
+
+class TaskScheduler(Thread):
+    def __init__(self, handle, sync_queue_bell, sync_busy_bell):
+        super().__init__()
+
+        self.handle = handle
+        self.sync_queue_bell = sync_queue_bell
+        self.sync_busy_bell = sync_busy_bell
+
+        self.queue = deque()
+        self.busy = deque()
+        self.is_running = False
+        self.pool = Pool()
+
+    def add_queue_job(self, config):
+        self.queue.append(Job(config, self.handle))
+        self.sync_queue_bell()
+
+    def remove_queue_job(self, index):
+        job = self.queue.pop(index)
+        self.sync_queue_bell()
+
+        return job
+
+    def remove_busy_job(self, index):
+        job = self.queue.pop(index)
+        job.join(timeout=1)
+        self.sync_busy_bell()
+
+        return job
+
+    def start_queue(self):
+        self.is_running = True
+
+    def stop_queue(self):
+        self.is_running = False
+
+    def run(self):
+        while True:
+            if self.is_running and len(self.busy) < cpu_count():
+                job = self.queue.popleft()
+                self.sync_queue_bell()
+                job.start()
+                self.busy.append(job)
+                self.sync_busy_bell()
+
+            for i, job in enumerate(self.busy):
+                if job.result is not None:
+                    self.sync_busy_bell(i)
+
+            time.sleep(1)
+
+

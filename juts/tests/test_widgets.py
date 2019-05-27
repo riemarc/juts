@@ -15,7 +15,7 @@ config_flat = dict({
 })
 
 config = {"config_1": config_flat}
-job = jt.Job(config)
+job = jt.Job(config, lambda: 0)
 
 
 class TestWidgets(TestCase):
