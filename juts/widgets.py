@@ -159,8 +159,8 @@ class SelectWithLabel(iw.VBox):
         super().__init__([self.label, self.select], **kwargs)
 
     def add_items(self, items):
-        self.select.options = tuple(list(self.select.options) + [it.name for it in items])
         self._list_items += items
+        self.select.options = tuple(list(self.select.options) + [it.name for it in items])
 
 
 class SchedulerForm(iw.GridBox):
@@ -214,11 +214,6 @@ class SchedulerForm(iw.GridBox):
                 ''')
 
         super().__init__(grid_items, layout=grid_layout)
-
-    def add_configs(self, configs):
-        self.ignore_events = True
-        self.config_list.add_items(as_config_list(configs))
-        self.ignore_events = False
 
 
 class VisualizerForm(iw.VBox):
