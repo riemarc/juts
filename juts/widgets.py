@@ -172,12 +172,12 @@ class SelectWithLabel(iw.VBox):
         self.select.options = tuple(list(self.select.options) + [it.name for it in items])
 
     def pop_item(self):
-        index = self.select.selected_index
+        index = self.select.index
         item = self._list_items[index]
         self._list_items = [
             it for i, it in enumerate(self._list_items) if i != index]
         self.select.options = tuple([
-            it for i, it in enumerate(self.self.select.options) if i != index])
+            it for i, it in enumerate(self.select.options) if i != index])
 
         return item
 

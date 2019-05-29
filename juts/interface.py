@@ -17,7 +17,7 @@ class SchedulerInterface(SchedulerForm):
         self.result_list.select.observe(self.on_busy_change, names="index")
 
         self.config_view.sync_bt.observe(self.on_cv_sync, names="value")
-        self.config_view.queue_bt.on_click(self.on_cv_queue)
+        self.config_view.queue_bt.observe(self.on_cv_queue, names="value")
         self.config_view.remove_bt.observe(self.on_cv_remove, names="value")
         self.config_view.save_bt.observe(self.on_cv_save, names="value")
 
@@ -62,7 +62,7 @@ class SchedulerInterface(SchedulerForm):
     def on_cv_sync(self, change):
         pass
 
-    def on_cv_queue(self):
+    def on_cv_queue(self, change):
         config = self.config_list.pop_item()
         print(config)
         # self.job_scheduler.append_queue_job(config)

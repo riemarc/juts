@@ -23,5 +23,6 @@ def handle(config, process_queue=None, result_dict=None):
 class TestInterface(TestCase):
     def test_widgets(self):
         ui = jt.UserInterface(handle, config)
+        ui.scheduler.config_view.queue_bt.value = True
         # ui.scheduler.config_view.queue_bt.value = True
         print(ui.scheduler.config_list.select)
