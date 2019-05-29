@@ -21,9 +21,9 @@ class ConfigurationView(iw.VBox):
         super().__init__(children=[self.header_box])
 
         if config is not None:
-            self.new_config(config)
+            self.update_view(config)
 
-    def new_config(self, config):
+    def update_view(self, config):
         if not isinstance(config, Configuration):
             config = Configuration(config)
 
@@ -37,8 +37,7 @@ class ConfigurationView(iw.VBox):
             for key, value in param_set.items():
                 param_set_items.append(
                     iw.Text(value=str(value),
-                            description=key,
-                            disabled=config.is_locked()))
+                            description=key))
 
             accordion_items.append(iw.Box(children=param_set_items))
 
@@ -50,10 +49,6 @@ class ConfigurationView(iw.VBox):
         self.children = (self.header_box, accordion)
 
     def get_config(self):
-        if self.config.is_locked():
-            self.new_config(self.config)
-            return self.config
-
         name = self.text.value
 
         config = OrderedDict()
@@ -89,58 +84,72 @@ class ConfigurationView(iw.VBox):
 
 
 class ResultView(iw.Accordion):
-    def __init__(self, result):
-        result_items = [iw.HTML(value=str(val)) for val in result.values()]
-
-        if len(result_items) == 0:
-            result_items = [iw.HTML(value="not yet assigned")]
-            self.set_title(0, "None")
-
-        super().__init__(children=result_items)
-
-        for i, key in enumerate(result):
-            self.set_title(i, key)
+    def __init__(self, result=None):
+        super().__init__(children=[])
         self.selected_index = None
+
+        if result is None:
+            result = dict()
+
+        self.update_view(result)
+
+    def update_view(self, result):
+        result_items = list()
+        for i, (key, val) in enumerate(result.items()):
+            result_items.append(iw.HTML(value=str(val)))
+            self.set_title(i, key)
+
+        self.children = tuple(result_items)
 
 
 class JobView(iw.VBox):
     def __init__(self, job=None):
         self.text = iw.Text(value="", disabled=True)
         self.show_bt = iw.Button(
-            description='Show Result', icon="eye")
+            description='Show Result', icon="eye", disabled=True)
         self.save_bt = iw.Button(
-            description='Save Result', icon="save")
+            description='Save Result', icon="save", disabled=True)
         self.discard_bt = iw.Button(
-            description='Discard Job', icon="remove")
+            description='Discard Job', icon="remove", disabled=True)
         self.header_box = iw.HBox(
             children=[self.text, self.show_bt, self.save_bt, self.discard_bt])
-
-        self.progress_label = iw.Label("Progress")
-        self.config_label = iw.Label("Configuration")
-        self.result_label = iw.Label("Result")
 
         super().__init__(children=[self.header_box])
 
         if job is not None:
-            self.new_job(job)
+            self.update_view(job)
 
-    def new_job(self, job):
+    def update_view(self, job):
         self.job = job
 
         self.text.value = job.config.name
-        self.config_view = ConfigurationView(self.job.config)
-        self.config_view.children = (self.config_view.children[1],)
-        if self.job.result is not None:
-            self.result_view = ResultView(self.job.result)
-            self.children = (
-                self.header_box, self.progress_label, self.job.progress,
-                self.result_label, self.result_view, self.config_label,
-                self.config_view)
 
-        else:
-            self.children = (
-                self.header_box, self.progress_label, self.job.progress,
-                self.config_label, self.config_view)
+        config_view = ConfigurationView(self.job.config)
+        config_view.children = (config_view.children[1],)
+
+        self.result_view = ResultView(self.job.result)
+
+        logger = self.job.log_handler.out
+
+        accordion = iw.Accordion([config_view, self.result_view, logger])
+        for i, title in enumerate(["Configuration", "Result", "Log"]):
+            accordion.set_title(i, title)
+        accordion.selected_index = None
+
+        self.children = (self.header_box, self.job.progress, accordion)
+
+        self.update_button_states()
+
+    def update_result_view(self, result):
+        self.result_view.update_view(result)
+        self.update_button_states()
+
+    def update_button_states(self):
+        no_result = not bool(self.job.result)
+        self.show_bt.disabled = no_result
+        self.save_bt.disabled = no_result
+        self.discard_bt.disabled = self.job.is_alive()
+
 
 
 class SelectWithLabel(iw.VBox):
@@ -162,23 +171,33 @@ class SelectWithLabel(iw.VBox):
         self._list_items += items
         self.select.options = tuple(list(self.select.options) + [it.name for it in items])
 
+    def pop_item(self):
+        index = self.select.selected_index
+        item = self._list_items[index]
+        self._list_items = [
+            it for i, it in enumerate(self._list_items) if i != index]
+        self.select.options = tuple([
+            it for i, it in enumerate(self.self.select.options) if i != index])
+
+        return item
+
 
 class SchedulerForm(iw.GridBox):
     def __init__(self, config=None):
         head_it_layout = lambda lbl: iw.Layout(width='auto', grid_area=lbl)
 
+        self.load_configs_bt = iw.Button(
+            description="Load Configs", icon="open",
+            layout=head_it_layout("load_config_button"))
         self.save_configs_bt = iw.Button(
             description="Save Configs", icon="save",
             layout=head_it_layout("save_config_button"))
         self.save_results_bt = iw.Button(
             description="Save Results", icon="save",
             layout=head_it_layout("save_result_button"))
-        self.run_queue_bt = iw.ToggleButton(
+        self.play_queue_bt = iw.ToggleButton(
             description="Run", icon="play",
             layout=head_it_layout("run_button"))
-        self.pause_queue_bt = iw.ToggleButton(
-            description="Pause", icon="pause",
-            layout=head_it_layout("pause_button"))
 
         self.config_list = SelectWithLabel(
             "Configurations", config, layout=head_it_layout("config_list"))
@@ -197,17 +216,17 @@ class SchedulerForm(iw.GridBox):
         self.view_tab.set_title(0, "Config View")
         self.view_tab.set_title(1, "Job View")
 
-        grid_items = [self.save_configs_bt, self.save_results_bt,
-                      self.run_queue_bt, self.pause_queue_bt, self.config_list,
-                      self.busy_list, self.queue_list, self.result_list,
-                      self.view_tab]
+        grid_items = [self.load_configs_bt, self.save_configs_bt,
+                      self.save_results_bt, self.play_queue_bt,
+                      self.config_list, self.busy_list, self.queue_list,
+                      self.result_list, self.view_tab]
         grid_layout = iw.Layout(
                 width='100%',
                 grid_template_rows='auto auto auto auto',
                 grid_template_columns='24% 24% 24% 24%',
                 grid_gap='0% 1%',
                 grid_template_areas='''
-                "save_config_button save_result_button run_button pause_button "
+                "load_config_button save_config_button save_result_button run_button "
                 "config_list config_list queue_list queue_list "
                 "result_list result_list busy_list busy_list "
                 "view_tab view_tab view_tab view_tab "

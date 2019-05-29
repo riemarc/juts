@@ -17,14 +17,11 @@ config_flat = dict({
 config = {"config_1": config_flat}
 job = jt.Job(jt.Configuration(config), lambda: 0)
 
+def handle(config, process_queue=None, result_dict=None):
+    pass
 
-class TestWidgets(TestCase):
+class TestInterface(TestCase):
     def test_widgets(self):
-        jt.SelectWithLabel("label", config)
-        jt.ConfigurationView()
-        jt.ConfigurationView(config)
-        jt.JobView()
-        jt.JobView(job)
-        ui = jt.UserInterface()
-        ui.add_configs(config)
-
+        ui = jt.UserInterface(handle, config)
+        # ui.scheduler.config_view.queue_bt.value = True
+        print(ui.scheduler.config_list.select)

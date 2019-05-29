@@ -6,6 +6,7 @@ from threading import Thread
 from numbers import Number
 from pprint import pformat
 import ipywidgets as iw
+import logging
 import time
 import yaml
 
@@ -22,20 +23,12 @@ class Configuration(OrderedDict):
             super().__init__(ord_config)
             self.name = [key for key in ord_dict.keys()][0]
 
-        self._locked = False
-
     def __repr__(self, *args, **kwargs):
         prt = ("Name: {}\n"
                "Configuration:\t{}").format(
             self.name, pformat(list(self.items())).replace("\n", "\n\t\t"))
 
         return prt
-
-    def lock_configuration(self):
-        self._locked = True
-
-    def is_locked(self):
-        return self._locked
 
     @staticmethod
     def as_ordered_dict(config):
@@ -140,6 +133,8 @@ class Result(OrderedDict):
         super().__init__(result)
 
 
+log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
 class Job(Thread):
     def __init__(self, config, handle, result=None):
         super().__init__()
@@ -158,6 +153,16 @@ class Job(Thread):
                                          bar_style='info',
                                          orientation='horizontal',
                                          layout=progress_layout)
+
+        self.job_started = Signal()
+        self.job_finished = Signal()
+
+        self.logger = logging.getLogger(str(hash(self)))
+        self.logger.setLevel(logging.INFO)
+        self.log_handler = OutputWidgetHandler()
+        self.log_handler.setLevel(logging.INFO)
+        self.log_handler.setFormatter(log_formatter)
+        self.logger.addHandler(self.log_handler)
 
     def get_config(self):
         return self._config
@@ -182,62 +187,72 @@ class Job(Thread):
 
     result = property(get_result, set_result)
 
+    def process_queue_get(self, process_queue):
+        try:
+            status = process_queue.get(timeout=.5)
+
+        except Empty:
+            status = None
+            self.logger.warning("multiprocesssing queue timout")
+
+        if status is not None:
+            self.progress.value = status[0]
+
     def run(self):
         process_queue = Queue()
         manager = Manager()
         return_dict = manager.dict()
+        self.logger.info("initialize process")
         process = Process(target=self.handle,
                           args=(self.config,),
                           kwargs=dict(return_dict=return_dict,
                                       process_queue=process_queue))
+        self.logger.info("start process")
         process.start()
 
         while process.is_alive():
-            try:
-                if not process_queue.empty():
-                    status = process_queue.get(timeout=10)
+            self.process_queue_get(process_queue)
+        self.logger.info("process finished")
 
-                else:
-                    status = None
-                    time.sleep(1)
+        while not process_queue.empty():
+            self.process_queue_get(process_queue)
+        self.logger.info("queue empty")
 
-            except Empty:
-                status = None
-
-            if status is not None:
-                self.progress.value = status[0]
-
+        self.logger.info("fetch results")
         self.result = Result(dict(return_dict))
+
+        self.logger.info("join process")
         process.join()
 
+        self.progress.bar_style = "success"
 
-class TaskScheduler(Thread):
-    def __init__(self, handle, sync_queue_bell, sync_busy_bell):
+
+class JobScheduler(Thread):
+    def __init__(self, handle):
         super().__init__()
-
         self.handle = handle
-        self.sync_queue_bell = sync_queue_bell
-        self.sync_busy_bell = sync_busy_bell
+        self.sync_queue = Signal()
+        self.sync_busy = Signal()
 
         self.queue = deque()
         self.busy = deque()
         self.is_running = False
         self.pool = Pool()
 
-    def add_queue_job(self, config):
+    def append_queue_job(self, config):
         self.queue.append(Job(config, self.handle))
-        self.sync_queue_bell()
+        self.sync_queue()
 
-    def remove_queue_job(self, index):
+    def pop_queue_job(self, index):
         job = self.queue.pop(index)
-        self.sync_queue_bell()
+        self.sync_queue()
 
         return job
 
-    def remove_busy_job(self, index):
+    def pop_busy_job(self, index):
         job = self.queue.pop(index)
         job.join(timeout=1)
-        self.sync_busy_bell()
+        self.sync_busy()
 
         return job
 
@@ -249,17 +264,51 @@ class TaskScheduler(Thread):
 
     def run(self):
         while True:
-            if self.is_running and len(self.busy) < cpu_count():
-                job = self.queue.popleft()
-                self.sync_queue_bell()
-                job.start()
-                self.busy.append(job)
-                self.sync_busy_bell()
+            if self.is_running:
+                self.process_queue()
 
-            for i, job in enumerate(self.busy):
-                if job.result is not None:
-                    self.sync_busy_bell(i)
+            time.sleep(.5)
 
-            time.sleep(1)
+    def process_queue(self):
+        if self.is_running and len(self.busy) < cpu_count():
+            job = self.queue.popleft()
+            self.sync_queue()
+            job.start()
+            self.busy.append(job)
+            self.sync_busy()
+
+    def process_busy(self):
+        finished_jobs = list()
+        for i, job in enumerate(self.busy):
+            if job.result is not None:
+                finished_jobs.append(i)
+
+        for i in finished_jobs:
+            self.sync_busy(i)
 
 
+class OutputWidgetHandler(logging.Handler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.out = iw.Output()
+
+    def emit(self, record):
+        formatted_record = self.format(record)
+        new_output = {
+            'name': 'stdout',
+            'output_type': 'stream',
+            'text': formatted_record+'\n'
+        }
+        self.out.outputs = (new_output, ) + self.out.outputs
+
+
+class Signal(iw.ValueWidget):
+    def __init__(self):
+        super().__init__(value=0)
+
+    def __call__(self, index=None):
+        if index is None:
+            self.value += 1
+
+        else:
+            self.value -= index + 1
