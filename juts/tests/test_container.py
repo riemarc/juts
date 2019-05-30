@@ -42,22 +42,29 @@ config_invalid = OrderedDict({
         })})
 
 
+def function(config, process_queue=None, return_dict=None):
+    for i in range(10):
+        return_dict.update({i:i})
+        process_queue.put([i])
+        time.sleep(.5)
+
+
 class TestConfiguration(TestCase):
     def test_depth(self):
         with self.assertRaises(ValueError):
-            Configuration(config_flat)
+            Configuration(config_flat, function)
 
         with self.assertRaises(ValueError):
-            Configuration(config_deep)
+            Configuration(config_deep, function)
 
     def test_valid(self):
-        c1 = Configuration(config_1)
+        c1 = Configuration(config_1, function)
         self.assertIsInstance(c1, OrderedDict)
         self.assertIsInstance(c1["params_1"], OrderedDict)
         self.assertEqual(c1.name, "config_1")
 
         with self.assertRaises(ValueError):
-            Configuration(config_multiple)
+            Configuration(config_multiple, function)
 
     def test_load_dump(self):
         filename = "configs_temp_test.yml"
@@ -65,31 +72,12 @@ class TestConfiguration(TestCase):
         self.assertEqual(config_multiple, load_configurations(filename))
         os.remove(filename)
 
-    def test_as_config_list(self):
-        configs1 = jt.as_config_list(config_multiple)
-        configs2 = jt.as_config_list(configs1)
-        configs3 = jt.as_config_list(config_1)
-        configs4 = jt.as_config_list(Configuration(config_1))
-
-        configs = configs1 + configs2 + configs3 + configs4
-        assert all(isinstance(c, Configuration) for c in configs)
-
-        with self.assertRaises(AssertionError):
-            jt.as_config_list([config_1, Configuration(config_1)])
-
-
 
 class TestJob(TestCase):
     def test_job(self):
-        config = Configuration(config_1)
+        config = Configuration(config_1, function)
 
-        def process(s, process_queue=None, return_dict=None):
-            for i in range(10):
-                return_dict.update({i:i})
-                process_queue.put([i])
-                time.sleep(.5)
-
-        job = Job(config, process)
+        job = Job(config)
         job.start()
         job.join()
 

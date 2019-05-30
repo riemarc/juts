@@ -1,10 +1,28 @@
 from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
-from .container import JobScheduler
+from .container import JobScheduler, Job, Configuration, load_configurations
+
+
+def get_jobs_from_user_input(handle, config):
+    jobs = list()
+    for key, value in config.items():
+        job_config = {key: value}
+        jobs.append(Job(Configuration(job_config, handle)))
+
+    return jobs
 
 
 class SchedulerInterface(SchedulerForm):
     def __init__(self, handle=None, config=None):
-        super().__init__(config)
+        if isinstance(config, str):
+            config = load_configurations(config)
+
+        if handle is None:
+            jobs = list()
+
+        else:
+            jobs = get_jobs_from_user_input(handle, config)
+
+        super().__init__(jobs)
 
         self.load_configs_bt.on_click(self.on_load_configs)
         self.save_configs_bt.on_click(self.on_save_configs)
@@ -16,16 +34,16 @@ class SchedulerInterface(SchedulerForm):
         self.busy_list.select.observe(self.on_busy_change, names="index")
         self.result_list.select.observe(self.on_busy_change, names="index")
 
-        self.config_view.sync_bt.observe(self.on_cv_sync, names="value")
-        self.config_view.queue_bt.observe(self.on_cv_queue, names="value")
-        self.config_view.remove_bt.observe(self.on_cv_remove, names="value")
-        self.config_view.save_bt.observe(self.on_cv_save, names="value")
-
-        self.job_view.show_bt.observe(self.on_jv_show, names="value")
-        self.job_view.save_bt.observe(self.on_jv_save, names="value")
-        self.job_view.discard_bt.observe(self.on_jv_discard, names="value")
+        self.job_view.queue_bt.on_click(self.on_queue_bt)
+        self.job_view.sync_bt.observe(self.on_sync_bt, names="value")
+        self.job_view.save_config_bt.observe(self.on_save_config_bt, names="value")
+        self.job_view.save_result_bt.observe(self.on_save_result_bt, names="value")
+        self.job_view.show_bt.observe(self.on_show_bt, names="value")
+        self.job_view.discard_bt.observe(self.on_discard_bt, names="value")
 
         self.job_scheduler = JobScheduler(handle)
+        self.job_scheduler.sync_queue.observe(self.on_js_sync_queue, names="value")
+        self.job_scheduler.sync_busy.observe(self.on_js_sync_busy, names="value")
 
     def on_load_configs(self):
         pass
@@ -40,47 +58,50 @@ class SchedulerInterface(SchedulerForm):
         pass
 
     def on_config_change(self, change):
-        new_config = self.config_list._list_items[change["new"]]
-        self.config_view.update_view(new_config)
+        self.view_new_job(0, change["new"])
 
     def on_queue_change(self, change):
-        self.view_tab.selected_index = 1
-        self.view_new_job(self.queue_list, change["new"])
+        self.view_new_job(1, change["new"])
 
     def on_busy_change(self, change):
-        self.view_tab.selected_index = 1
-        self.view_new_job(self.busy_list, change["new"])
+        self.view_new_job(2, change["new"])
 
     def on_result_change(self, change):
-        self.view_tab.selected_index = 1
-        self.view_new_job(self.result_list, change["new"])
+        self.view_new_job(3, change["new"])
 
-    def view_new_job(self, vlist, index):
-        new_job = vlist._list_items[index]
-        self.job_view.update_view(new_job)
+    def view_new_job(self, list_index, item_index):
+        if item_index is not None:
+            new_job = self.job_lists[list_index].job_list[item_index]
+            self.job_view.update_view(new_job, self.job_list_labels[list_index])
 
-    def on_cv_sync(self, change):
+    def on_sync_bt(self, change):
         pass
 
-    def on_cv_queue(self, change):
-        config = self.config_list.pop_item()
-        print(config)
-        # self.job_scheduler.append_queue_job(config)
+    def on_queue_bt(self, change):
+        job = self.config_list.pop_item()
+        self.job_scheduler.append_queue_job(job)
 
-    def on_cv_remove(self, change):
+    def on_save_config_bt(self, change):
         pass
 
-    def on_cv_save(self, change):
+    def on_save_result_bt(self, change):
         pass
 
-    def on_jv_show(self, change):
+    def on_discard_bt(self, change):
         pass
 
-    def on_jv_save(self, change):
+    def on_show_bt(self, change):
         pass
 
-    def on_jv_discard(self, change):
+    def on_js_sync_queue(self, change):
+        self.queue_list.sync_items(list(self.job_scheduler.queue))
+
+    def on_js_sync_busy(self, change):
         pass
+
+    def add_config(self, handle, config):
+        jobs = get_jobs_from_user_input(handle, config)
+        self.config_list.add_items(jobs)
 
 
 class VisualizerInterface(VisualizerForm):
@@ -93,3 +114,6 @@ class UserInterface(UserInterfaceForm):
         scheduler = SchedulerInterface(handle, config)
         visualizer = VisualizerInterface()
         super().__init__(scheduler, visualizer)
+
+    def add_config(self, handle, config):
+        self.scheduler.add_config(handle, config)

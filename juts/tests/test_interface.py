@@ -1,5 +1,6 @@
 from unittest import TestCase
 import juts as jt
+import time
 
 
 config_flat = dict({
@@ -14,15 +15,22 @@ config_flat = dict({
     }),
 })
 
-config = {"config_1": config_flat}
-job = jt.Job(jt.Configuration(config), lambda: 0)
+def function(s, process_queue=None, return_dict=None):
+    for i in range(101):
+        return_dict.update({str(i):i})
+        process_queue.put([i])
+        time.sleep(.01)
 
-def handle(config, process_queue=None, result_dict=None):
-    pass
+config = {"config_1": config_flat}
+job = jt.Job(jt.Configuration(config, function))
 
 class TestInterface(TestCase):
     def test_widgets(self):
-        ui = jt.UserInterface(handle, config)
-        ui.scheduler.config_view.queue_bt.value = True
+        ui = jt.UserInterface(function, config)
+        ui.scheduler.job_view.queue_bt.value = True
         # ui.scheduler.config_view.queue_bt.value = True
         print(ui.scheduler.config_list.select)
+
+        ui = jt.UserInterface()
+        ui.add_config(function, config)
+        ui.scheduler.on_queue_bt(None)

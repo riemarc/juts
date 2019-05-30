@@ -1,5 +1,7 @@
 from unittest import TestCase
+import ipywidgets as iw
 import juts as jt
+import time
 
 
 config_flat = dict({
@@ -14,17 +16,31 @@ config_flat = dict({
     }),
 })
 
-config = {"config_1": config_flat}
-job = jt.Job(jt.Configuration(config), lambda: 0)
+def function(s, process_queue=None, return_dict=None):
+    for i in range(101):
+        return_dict.update({str(i):i})
+        process_queue.put([i])
+        time.sleep(.01)
+
+config = jt.Configuration({"config_1": config_flat}, function)
+job = jt.Job(config)
 
 
 class TestWidgets(TestCase):
     def test_widgets(self):
-        jt.SelectWithLabel("label", config)
+        jt.JobList("label", [job])
         jt.ConfigurationView()
-        jt.ConfigurationView(config)
+        cv = jt.ConfigurationView(config)
+        print(cv.get_config("test", function))
         jt.JobView()
-        jt.JobView(job)
-        ui = jt.UserInterface()
-        ui.add_configs(config)
+        jv = jt.JobView(job)
+        print(jv.get_config())
+        jt.UserInterfaceForm(iw.Widget(), iw.Widget())
+
+    def test_job_thread(self):
+        job = jt.Job(config)
+        job_view = jt.JobView(job, "busy")
+        job.start()
+        job.join()
+        job_view.result_view.update_view(job.result)
 

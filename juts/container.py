@@ -13,30 +13,38 @@ import os
 
 
 class Configuration(OrderedDict):
-    def __init__(self, config):
+    def __init__(self, config, handle=None):
+
         if isinstance(config, Configuration):
+            assert handle is None
+
             self.name = config.name
+            self.handle = config.handle
             super().__init__(config)
 
         else:
+            assert callable(handle)
+
             ord_dict = Configuration.as_ordered_dict(config)
             ord_config = [value for value in ord_dict.values()][0]
-            super().__init__(ord_config)
             self.name = [key for key in ord_dict.keys()][0]
+            self.handle = handle
+
+            super().__init__(ord_config)
 
     def __repr__(self, *args, **kwargs):
         prt = ("Name: {}\n"
-               "Configuration:\t{}").format(
-            self.name, pformat(list(self.items())).replace("\n", "\n\t\t"))
+               "Function: {}\n"
+               "Configuration:\n{}").format(
+            self.name,
+            self.handle,
+            pformat(list(self.items())))
 
         return prt
 
     @staticmethod
     def as_ordered_dict(config):
-        if isinstance(config, str):
-            config = load_configurations(config)
-
-        elif not isinstance(config, Mapping):
+        if not isinstance(config, Mapping):
             raise TypeError(
                 "Use collection.OrderedDict for configuration specification\n"
                 "or provide filename to yaml file.")
@@ -83,26 +91,6 @@ class Configuration(OrderedDict):
         return all([Configuration.is_valid_setting(st) for st in setting])
 
 
-def as_config_list(configs):
-    config_list = list()
-
-    if isinstance(configs, Configuration):
-        config_list.append(configs)
-
-    elif isinstance(configs, Mapping):
-        for key, value in configs.items():
-            config_list.append(Configuration({key: value}))
-
-    elif hasattr(configs, "__iter__"):
-        assert all(isinstance(conf, Configuration) for conf in configs)
-        config_list = list(configs)
-
-    else:
-        raise NotImplemented
-
-    return config_list
-
-
 def load_configurations(filename):
     with open(filename, "r") as f:
         configs = yaml.load(f, Loader=Loader)
@@ -137,14 +125,15 @@ class Result(OrderedDict):
 log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
 class Job(Thread):
-    def __init__(self, config, handle, result=None):
+    def __init__(self, config, result=None):
         super().__init__()
 
+        assert isinstance(config, Configuration)
         self._config = config
-        self._handle = handle
 
         self._result = None
         if result is not None:
+            assert isinstance(result, Result)
             self.result = result
 
         progress_layout = iw.Layout(width="auto")
@@ -169,11 +158,6 @@ class Job(Thread):
         return self._config
 
     config = property(get_config)
-
-    def get_handle(self):
-        return self._handle
-
-    handle = property(get_handle)
 
     def set_result(self, result):
         if self._result is None:
@@ -204,7 +188,7 @@ class Job(Thread):
         manager = Manager()
         return_dict = manager.dict()
         self.logger.info("initialize process")
-        process = Process(target=self.handle,
+        process = Process(target=self.config.handle,
                           args=(self.config,),
                           kwargs=dict(return_dict=return_dict,
                                       process_queue=process_queue))
@@ -228,6 +212,15 @@ class Job(Thread):
         self.progress.bar_style = "success"
 
 
+def as_job_list(config_list):
+    job_list = list()
+
+    for config in config_list:
+        job_list.append(Job(config))
+
+    return job_list
+
+
 class JobScheduler(Thread):
     def __init__(self, handle):
         super().__init__()
@@ -240,8 +233,8 @@ class JobScheduler(Thread):
         self.is_running = False
         self.pool = Pool()
 
-    def append_queue_job(self, config):
-        self.queue.append(Job(config, self.handle))
+    def append_queue_job(self, job):
+        self.queue.append(job)
         self.sync_queue()
 
     def pop_queue_job(self, index):
