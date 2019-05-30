@@ -125,7 +125,11 @@ class Result(OrderedDict):
 log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
 class Job(Thread):
+    job_count = 0
+
     def __init__(self, config, result=None):
+        Job.job_count += 1
+        self.job_index = Job.job_count
         super().__init__()
 
         assert isinstance(config, Configuration)
@@ -144,7 +148,6 @@ class Job(Thread):
                                          orientation='horizontal',
                                          layout=progress_layout)
 
-        self.job_started = Signal()
         self.job_finished = Signal()
 
         self.logger = logging.getLogger(str(hash(self)))
@@ -210,6 +213,7 @@ class Job(Thread):
         process.join()
 
         self.progress.bar_style = "success"
+        self.job_finished(self.job_index)
 
 
 def as_job_list(config_list):
@@ -227,25 +231,25 @@ class JobScheduler(Thread):
         self.handle = handle
         self.sync_queue = Signal()
         self.sync_busy = Signal()
+        self.sync_done = Signal()
 
-        self.queue = deque()
-        self.busy = deque()
+        self.queue_jobs = list()
+        self.busy_jobs = list()
+        self.done_jobs = list()
         self.is_running = False
-        self.pool = Pool()
 
     def append_queue_job(self, job):
-        self.queue.append(job)
+        self.queue_jobs.append(job)
         self.sync_queue()
 
     def pop_queue_job(self, index):
-        job = self.queue.pop(index)
+        job = self.queue_jobs.pop(index)
         self.sync_queue()
 
         return job
 
     def pop_busy_job(self, index):
-        job = self.queue.pop(index)
-        job.join(timeout=1)
+        job = self.busy_jobs.pop(index)
         self.sync_busy()
 
         return job
@@ -253,34 +257,44 @@ class JobScheduler(Thread):
     def start_queue(self):
         self.is_running = True
 
-    def stop_queue(self):
+    def pause_queue(self):
         self.is_running = False
 
     def run(self):
         while True:
-            if self.is_running:
+            if self.is_running and len(self.queue_jobs) > 0:
                 self.process_queue()
 
-            time.sleep(.5)
+            time.sleep(.2)
 
     def process_queue(self):
-        if self.is_running and len(os.sched_getaffinity(0)) > 0:
-            job = self.queue.popleft()
+        # if len(os.sched_getaffinity(0)) > 0:
+        if len(self.busy_jobs) < cpu_count():
+            job = self.queue_jobs.pop(0)
             self.sync_queue()
 
             job.start()
 
-            self.busy.append(job)
+            self.busy_jobs.append(job)
+            job.job_finished.observe(self.on_job_finished, names="value")
             self.sync_busy()
 
-    def process_busy(self):
-        finished_jobs = list()
-        for i, job in enumerate(self.busy):
-            if job.result is not None:
-                finished_jobs.append(i)
+    def on_job_finished(self, change):
+        job_index = Signal.as_index(change)
+        index = None
+        for i, job in enumerate(self.busy_jobs):
+            if job.job_index == job_index:
+                index = i
 
-        for i in finished_jobs:
-            self.sync_busy(i)
+        if index is None:
+            raise ValueError("Job is lost in busy queue.")
+
+        else:
+            self.done_jobs.append(self.busy_jobs.pop(index))
+            self.sync_busy()
+            self.sync_done()
+
+
 
 
 class OutputWidgetHandler(logging.Handler):
@@ -308,3 +322,9 @@ class Signal(iw.ValueWidget):
 
         else:
             self.value -= index + 1
+
+    @staticmethod
+    def as_index(change):
+        value = change["new"] - change["old"]
+        if value < 0:
+            return abs(value) - 1

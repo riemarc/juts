@@ -10,9 +10,9 @@ class ConfigurationView(iw.Accordion):
         super().__init__(children=[])
 
         if config is not None:
-            self.update_view(config)
+            self.update_view(config, True)
 
-    def update_view(self, config):
+    def update_view(self, config, editable):
         assert isinstance(config, Configuration)
         self.config = config
 
@@ -23,7 +23,8 @@ class ConfigurationView(iw.Accordion):
             for key, value in param_set.items():
                 param_set_items.append(
                     iw.Text(value=str(value),
-                            description=key))
+                            description=key,
+                            disabled=not editable))
 
             accordion_items.append(iw.Box(children=param_set_items))
 
@@ -123,7 +124,8 @@ class JobView(iw.VBox):
         self.job = job
         self.source_list = source_list
         self.text.value = job.config.name
-        self.config_view.update_view(self.job.config)
+        editable = source_list == "config"
+        self.config_view.update_view(self.job.config, editable)
         self.result_view.update_view(self.job.result)
         self.log_view = self.job.log_handler.out
 
@@ -193,24 +195,29 @@ class JobList(iw.VBox):
         self.select = iw.Select(options=select, layout=select_layout)
         super().__init__([self.label, self.select], **kwargs)
 
-    def add_items(self, items):
-        self.job_list += items
+    def append_jobs(self, jobs):
+        self.job_list += jobs
         self.select.options = (tuple(list(self.select.options) +
-                                     [it.config.name for it in items]))
+                                     [it.config.name for it in jobs]))
+        self.select.index = None
 
-    def pop_item(self):
-        index = self.select.index
-        item = self.job_list[index]
+    def pop_job(self, index=None):
+        if not index:
+            index = self.select.index
+
+        job = self.job_list[index]
         self.job_list = [
             it for i, it in enumerate(self.job_list) if i != index]
         self.select.options = tuple([
             it for i, it in enumerate(self.select.options) if i != index])
+        self.select.index = None
 
-        return item
+        return job
 
-    def sync_items(self, items):
-        self.job_list = items
-        self.select.options = tuple([it.config.name for it in items])
+    def sync_jobs(self, jobs):
+        self.job_list = jobs
+        self.select.options = tuple([it.config.name for it in jobs])
+        self.select.index = None
 
 
 class SchedulerForm(iw.GridBox):
