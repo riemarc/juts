@@ -71,6 +71,9 @@ class SchedulerInterface(SchedulerForm):
 
     def view_new_job(self, list_index, item_index):
         if item_index is not None:
+            for i, lst in enumerate(self.job_lists):
+                if i != list_index:
+                    lst.select.index = None
             new_job = self.job_lists[list_index].job_list[item_index]
             self.job_view.update_view(new_job, self.job_list_labels[list_index])
 
@@ -78,6 +81,7 @@ class SchedulerInterface(SchedulerForm):
         pass
 
     def on_queue_bt(self, change):
+        assert self.job_view.source_list == "config"
         job = self.config_list.pop_item()
         self.job_scheduler.append_queue_job(job)
 

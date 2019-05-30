@@ -210,7 +210,7 @@ class JobList(iw.VBox):
 
     def sync_items(self, items):
         self.job_list = items
-        self.select.options = tuple([it.name for it in items])
+        self.select.options = tuple([it.config.name for it in items])
 
 
 class SchedulerForm(iw.GridBox):

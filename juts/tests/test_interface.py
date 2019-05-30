@@ -33,4 +33,4 @@ class TestInterface(TestCase):
 
         ui = jt.UserInterface()
         ui.add_config(function, config)
-        ui.scheduler.on_queue_bt(None)
+        ui.scheduler.on_queue_bt(dict(new=1))
