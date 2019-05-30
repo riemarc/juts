@@ -67,13 +67,13 @@ class SchedulerInterface(SchedulerForm):
 
         self._block_signal = False
 
-    def on_load_configs(self):
+    def on_load_configs(self, change):
         pass
 
-    def on_save_configs(self):
+    def on_save_configs(self, change):
         pass
 
-    def on_save_results(self):
+    def on_save_results(self, change):
         pass
 
     def on_play_queue(self, change):
@@ -89,27 +89,22 @@ class SchedulerInterface(SchedulerForm):
 
     @on_unblocked_signal
     def on_config_change(self, change):
-        print("on_config_change")
         self.view_new_job(0, change["new"])
 
     @on_unblocked_signal
     def on_queue_change(self, change):
-        print("on_queue_change")
         self.view_new_job(1, change["new"])
 
     @on_unblocked_signal
     def on_busy_change(self, change):
-        print("on_busy_change")
         self.view_new_job(2, change["new"])
 
     @on_unblocked_signal
     def on_result_change(self, change):
-        print("on_result_change")
         self.view_new_job(3, change["new"])
 
     @on_unblocked_signal
     def view_new_job(self, list_index, item_index):
-        print("view_new_job")
         if item_index is not None:
             for i, lst in enumerate(self.job_lists):
                 if i != list_index:
@@ -126,7 +121,6 @@ class SchedulerInterface(SchedulerForm):
 
     @block_signal
     def on_queue_bt(self, change):
-        print("on_queue_bt")
         assert self.job_view.source_list == "config"
         config = self.job_view.get_config()
         job = Job(config)
@@ -146,17 +140,14 @@ class SchedulerInterface(SchedulerForm):
 
     @block_signal
     def on_js_sync_queue(self, change):
-        print("on_js_sync_queue")
         self.queue_list.sync_jobs(list(self.job_scheduler.queue_jobs))
 
     @block_signal
     def on_js_sync_busy(self, change):
-        print("on_js_sync_busy")
         self.busy_list.sync_jobs(list(self.job_scheduler.busy_jobs))
 
     @block_signal
     def on_js_sync_done(self, change):
-        print("on_js_sync_done")
         self.result_list.sync_jobs(list(self.job_scheduler.done_jobs))
 
     def add_config(self, handle, config):

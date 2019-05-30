@@ -295,8 +295,6 @@ class JobScheduler(Thread):
             self.sync_done()
 
 
-
-
 class OutputWidgetHandler(logging.Handler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
