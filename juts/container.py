@@ -9,6 +9,7 @@ import ipywidgets as iw
 import logging
 import time
 import yaml
+import os
 
 
 class Configuration(OrderedDict):
@@ -270,10 +271,12 @@ class JobScheduler(Thread):
             time.sleep(.5)
 
     def process_queue(self):
-        if self.is_running and len(self.busy) < cpu_count():
+        if self.is_running and len(os.sched_getaffinity(0)) > 0:
             job = self.queue.popleft()
             self.sync_queue()
+
             job.start()
+
             self.busy.append(job)
             self.sync_busy()
 
