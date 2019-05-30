@@ -110,7 +110,7 @@ class SchedulerInterface(SchedulerForm):
                 if i != list_index:
                     lst.select.index = None
             try:
-                new_job = self.job_lists[list_index].job_list[item_index]
+                new_job = self.job_lists[list_index].item_list[item_index]
                 self.job_view.update_view(new_job, self.job_list_labels[list_index])
 
             except IndexError:
@@ -140,19 +140,19 @@ class SchedulerInterface(SchedulerForm):
 
     @block_signal
     def on_js_sync_queue(self, change):
-        self.queue_list.sync_jobs(list(self.job_scheduler.queue_jobs))
+        self.queue_list.sync_items(list(self.job_scheduler.queue_jobs))
 
     @block_signal
     def on_js_sync_busy(self, change):
-        self.busy_list.sync_jobs(list(self.job_scheduler.busy_jobs))
+        self.busy_list.sync_items(list(self.job_scheduler.busy_jobs))
 
     @block_signal
     def on_js_sync_done(self, change):
-        self.result_list.sync_jobs(list(self.job_scheduler.done_jobs))
+        self.result_list.sync_items(list(self.job_scheduler.done_jobs))
 
     def add_config(self, handle, config):
         jobs = get_jobs_from_user_input(handle, config)
-        self.config_list.append_jobs(jobs)
+        self.config_list.append_items(jobs)
 
 
 class VisualizerInterface(VisualizerForm):

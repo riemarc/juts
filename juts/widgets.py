@@ -179,45 +179,58 @@ class JobView(iw.VBox):
             self.text.value, self.job.config.handle)
 
 
-
-class JobList(iw.VBox):
-    def __init__(self, label, jobs, **kwargs):
+class ItemList(iw.VBox):
+    def __init__(self, label, items, **kwargs):
         self.label = iw.Label(label)
 
-        if jobs is None:
-            self.job_list = list()
+        if items is None:
+            self.item_list = list()
 
         else:
-            self.job_list = jobs
+            self.item_list = items
 
-        select = [it.config.name for it in self.job_list]
+        select = [self.get_item_str(it) for it in self.item_list]
         select_layout = iw.Layout(width="auto", height="100px")
         self.select = iw.Select(options=select, layout=select_layout)
         super().__init__([self.label, self.select], **kwargs)
 
-    def append_jobs(self, jobs):
-        self.job_list += jobs
-        self.select.options = (tuple(list(self.select.options) +
-                                     [it.config.name for it in jobs]))
+    @staticmethod
+    def get_item_str(it):
+        return it.name
+
+    def append_items(self, items):
+        self.item_list += items
+        self.select.options = (
+            tuple(list(self.select.options) +
+                  [self.get_item_str(it) for it in items]))
         self.select.index = None
 
-    def pop_job(self, index=None):
+    def pop_item(self, index=None):
         if not index:
             index = self.select.index
 
-        job = self.job_list[index]
-        self.job_list = [
-            it for i, it in enumerate(self.job_list) if i != index]
+        item = self.item_list[index]
+        self.item_list = [
+            it for i, it in enumerate(self.item_list) if i != index]
         self.select.options = tuple([
             it for i, it in enumerate(self.select.options) if i != index])
         self.select.index = None
 
-        return job
+        return item
 
-    def sync_jobs(self, jobs):
-        self.job_list = jobs
+    def sync_items(self, jobs):
+        self.item_list = jobs
         self.select.options = tuple([it.config.name for it in jobs])
         self.select.index = None
+
+
+class JobList(ItemList):
+    def __init__(self, label, jobs, **kwargs):
+        super().__init__(label, jobs, **kwargs)
+
+    @staticmethod
+    def get_item_str(it):
+        return it.config.name
 
 
 class SchedulerForm(iw.GridBox):
@@ -289,3 +302,17 @@ class UserInterfaceForm(iw.Tab):
 
         self.set_title(0, "Scheduler")
         self.set_title(1, "Visualizer")
+
+
+class PlotWidgetList(ItemList):
+    def __init__(self, label, widgets, **kwargs):
+        super().__init__(label, widgets, **kwargs)
+
+    @staticmethod
+    def get_item_str(it):
+        return it.__name__
+
+
+class PlotList(ItemList):
+    def __init__(self, label, plots, **kwargs):
+        super().__init__(label, plots, **kwargs)
