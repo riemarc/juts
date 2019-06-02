@@ -56,7 +56,6 @@ class SchedulerInterface(SchedulerForm):
         self.job_view.sync_bt.on_click(self.on_sync_bt)
         self.job_view.save_config_bt.on_click(self.on_save_config_bt)
         self.job_view.save_result_bt.on_click(self.on_save_result_bt)
-        self.job_view.show_bt.on_click(self.on_show_bt)
         self.job_view.discard_bt.on_click(self.on_discard_bt)
 
         self.job_scheduler = JobScheduler(handle)
@@ -135,9 +134,6 @@ class SchedulerInterface(SchedulerForm):
     def on_discard_bt(self, change):
         pass
 
-    def on_show_bt(self, change):
-        pass
-
     @block_signal
     def on_js_sync_queue(self, change):
         self.queue_list.sync_items(list(self.job_scheduler.queue_jobs))
@@ -156,15 +152,22 @@ class SchedulerInterface(SchedulerForm):
 
 
 class VisualizerInterface(VisualizerForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, play_queue_bt):
+        super().__init__(play_queue_bt)
 
 
 class UserInterface(UserInterfaceForm):
     def __init__(self, handle=None, config=None):
         scheduler = SchedulerInterface(handle, config)
-        visualizer = VisualizerInterface()
+        visualizer = VisualizerInterface(scheduler.play_queue_bt)
         super().__init__(scheduler, visualizer)
+
+        self.scheduler.job_view.add_to_visu_bt.on_click(self.on_add_to_visu)
 
     def add_config(self, handle, config):
         self.scheduler.add_config(handle, config)
+
+    def on_add_to_visu(self, change):
+        index = self.scheduler.result_list.select.index
+        job = self.scheduler.result_list.item_list[index]
+        self.visualizer.job_list.append_items([job])

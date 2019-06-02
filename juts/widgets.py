@@ -96,8 +96,8 @@ class JobView(iw.VBox):
             description='Queue Job', icon="check")
         self.sync_bt = iw.Button(
             description='Sync Config', icon="sync")
-        self.show_bt = iw.Button(
-            description='Show Result', icon="eye")
+        self.add_to_visu_bt = iw.Button(
+            description='Add to Visu', icon="eye")
         self.save_config_bt = iw.Button(
             description='Save Config', icon="save")
         self.save_result_bt = iw.Button(
@@ -150,7 +150,7 @@ class JobView(iw.VBox):
 
         elif source_list == "busy":
             self.text.disabled = True
-            header = [self.text, self.show_bt]
+            header = [self.text, self.add_to_visu_bt]
             accordion = [self.config_view, self.log_view]
             accordion_title = ["Configuration", "Log"]
             self.children = [self.label, self.header_box, self.job.progress,
@@ -158,7 +158,7 @@ class JobView(iw.VBox):
 
         elif source_list == "result":
             self.text.disabled = True
-            header = [self.text, self.sync_bt, self.show_bt,
+            header = [self.text, self.sync_bt, self.add_to_visu_bt,
                       self.save_result_bt, self.save_config_bt, self.discard_bt]
             accordion = [self.config_view, self.result_view, self.log_view]
             accordion_title = ["Configuration", "Result", "Log"]
@@ -187,7 +187,7 @@ class ItemList(iw.VBox):
             self.item_list = list()
 
         else:
-            self.item_list = items
+            self.item_list = list(items)
 
         select = [self.get_item_str(it) for it in self.item_list]
         select_layout = iw.Layout(width="auto", height="100px")
@@ -286,9 +286,60 @@ class SchedulerForm(iw.GridBox):
         super().__init__(grid_items, layout=grid_layout)
 
 
-class VisualizerForm(iw.VBox):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class VisualizerForm(iw.GridBox):
+    def __init__(self, play_queue_bt):
+        head_it_layout = lambda lbl: iw.Layout(width='auto', grid_area=lbl)
+
+        self.discard_job_bt = iw.Button(
+            description="Discard Job(s)", icon="remove",
+            layout=head_it_layout("discard_job_button"))
+        self.job_list = JobList(
+            "Jobs", tuple(), layout=head_it_layout("job_list"))
+
+        self.create_plot_bt = iw.Button(
+            description="Create Plot", icon="play",
+            layout=head_it_layout("create_button"))
+        self.widget_list = JobList(
+            "Plot Widgets", tuple(), layout=head_it_layout("widget_list"))
+        self.valid_icon = iw.Valid(value=True)
+        widget_list_header = iw.HBox([self.widget_list.label, self.valid_icon])
+        self.widget_list.children = tuple(
+            [widget_list_header, self.widget_list.select])
+
+        self.discard_plot_bt = iw.Button(
+            description="Discard Plot(s)", icon="remove",
+            layout=head_it_layout("discard_plot_button"))
+        self.plot_list = JobList(
+            "Plots", tuple(), layout=head_it_layout("plot_list"))
+
+        self.list_labels = ["job", "widget", "plot"]
+        self.lists = [self.job_list, self.widget_list, self.job_list]
+
+        self.job_accord = iw.Accordion(layout=head_it_layout(""))
+        self.plot_accord = iw.Accordion(layout=head_it_layout(""))
+        self.tab_widget = iw.Tab([self.job_accord, self.plot_accord],
+                                 layout=head_it_layout("tab_widget"))
+        self.tab_widget.set_title(0, "View Jobs")
+        self.tab_widget.set_title(1, "View Plots")
+
+        spacer = iw.Label(str(""), layout=head_it_layout("spacer"))
+
+        grid_items = [play_queue_bt, self.discard_job_bt, self.create_plot_bt,
+                      self.discard_plot_bt, self.job_list, self.widget_list,
+                      self.plot_list, self.tab_widget, spacer]
+        grid_layout = iw.Layout(
+            width='100%',
+            grid_template_rows='auto auto auto',
+            grid_template_columns='15.7% 15.7% 15.7% 15.7% 15.7% 15.7%',
+            grid_gap='0% 1%',
+            grid_template_areas='''
+                "run_button discard_job_button create_button create_button discard_plot_button discard_plot_button "
+                "job_list job_list widget_list widget_list plot_list plot_list "
+                "spacer spacer spacer spacer spacer spacer "
+                "tab_widget tab_widget tab_widget tab_widget tab_widget tab_widget "
+                ''')
+
+        super().__init__(grid_items, layout=grid_layout)
 
 
 class UserInterfaceForm(iw.Tab):
