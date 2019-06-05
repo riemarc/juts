@@ -168,6 +168,14 @@ class UserInterface(UserInterfaceForm):
         self.scheduler.add_config(handle, config)
 
     def on_add_to_visu(self, change):
-        index = self.scheduler.result_list.select.index
-        job = self.scheduler.result_list.item_list[index]
+        job_list = None
+        for lst in self.scheduler.job_lists:
+            if lst.select.index is not None:
+                job_list = lst
+
+        if job_list is None:
+            raise NotImplementedError
+
+        index = job_list.select.index
+        job = job_list.item_list[index]
         self.visualizer.job_list.append_items([job])

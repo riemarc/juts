@@ -1,15 +1,15 @@
-from collections import OrderedDict, Mapping, deque
+from multiprocessing import Process, Queue, Manager, cpu_count
 from yamlordereddictloader import Dumper, Loader
-from multiprocessing import Pool, Process, Queue, Manager, cpu_count
-from queue import Empty
+from collections import OrderedDict, Mapping
+from abc import abstractmethod
 from threading import Thread
-from numbers import Number
 from pprint import pformat
+from numbers import Number
+from queue import Empty
 import ipywidgets as iw
 import logging
 import time
 import yaml
-import os
 
 
 class Configuration(OrderedDict):
@@ -136,9 +136,6 @@ class Job(Thread):
         self._config = config
 
         self._result = None
-        if result is not None:
-            assert isinstance(result, Result)
-            self.result = result
 
         progress_layout = iw.Layout(width="auto")
         self.progress = iw.FloatProgress(value=0,
@@ -149,6 +146,7 @@ class Job(Thread):
                                          layout=progress_layout)
 
         self.job_finished = Signal()
+        self.result_update = Signal()
 
         self.logger = logging.getLogger(str(hash(self)))
         self.logger.setLevel(logging.INFO)
@@ -157,34 +155,43 @@ class Job(Thread):
         self.log_handler.setFormatter(log_formatter)
         self.logger.addHandler(self.log_handler)
 
+        self._live_result = dict()
+
     def get_config(self):
         return self._config
 
     config = property(get_config)
 
-    def set_result(self, result):
-        if self._result is None:
-            assert isinstance(result, Result)
-            self._result = result
+    def get_result(self):
+        if self.is_alive():
+            return self._live_result
 
         else:
-            raise ValueError("Once set, result is immutable.")
+            return self._result
 
-    def get_result(self):
-        return self._result
-
-    result = property(get_result, set_result)
+    result = property(get_result)
 
     def process_queue_get(self, process_queue):
         try:
             status = process_queue.get(timeout=.5)
 
         except Empty:
-            status = None
+            status = dict()
             self.logger.warning("multiprocesssing queue timout")
 
-        if status is not None:
-            self.progress.value = status[0]
+        if "progress" in status:
+            self.progress.value = status.pop("progress")
+
+        if status:
+            self.update_live_results(status)
+            self.result_update()
+
+    def update_live_results(self, status):
+        for key, value in status:
+            if not key in self._live_result:
+                self._live_result[key] = list()
+
+            self._live_result[key].append(value)
 
     def run(self):
         process_queue = Queue()
@@ -207,7 +214,7 @@ class Job(Thread):
         self.logger.info("queue empty")
 
         self.logger.info("fetch results")
-        self.result = Result(dict(return_dict))
+        self._result = Result(dict(return_dict))
 
         self.logger.info("join process")
         process.join()
@@ -326,3 +333,26 @@ class Signal(iw.ValueWidget):
         value = change["new"] - change["old"]
         if value < 0:
             return abs(value) - 1
+
+
+class Plot:
+    def __init__(self, jobs, widget):
+        self.jobs = jobs
+        self.widget = widget
+        self.last_update = time.time()
+        self.plot_update_cycle = 0.1
+
+        for job in jobs:
+            job.result_update.observe(self.on_result_update, names="value")
+            job.job_finished.observe(self.on_job_finished, names="value")
+
+    def on_result_update(self, change):
+        if time.time() - self.last_update >= self.plot_update_cycle:
+            self.update_plot([job.result for job in self.jobs])
+
+    def on_job_finished(self, change):
+        self.update_plot([job.result for job in self.jobs])
+
+    @abstractmethod
+    def update_plot(self, data):
+        pass

@@ -1,8 +1,9 @@
-from .container import (Configuration, Result, Job, load_configurations,
-                        dump_configurations)
+from .container import (Configuration, Job, Plot)
 from collections import OrderedDict
 from ast import literal_eval
 import ipywidgets as iw
+import numpy as np
+from bqplot import pyplot as plt
 
 
 class ConfigurationView(iw.Accordion):
@@ -143,14 +144,14 @@ class JobView(iw.VBox):
 
         elif source_list == "queue":
             self.text.disabled = True
-            header = [self.text, self.discard_bt]
+            header = [self.text, self.add_to_visu_bt, self.discard_bt]
             accordion = [self.config_view]
             accordion_title = ["Configuration"]
             self.children = [self.label, self.header_box, self.accordion]
 
         elif source_list == "busy":
             self.text.disabled = True
-            header = [self.text, self.add_to_visu_bt]
+            header = [self.text]
             accordion = [self.config_view, self.log_view]
             accordion_title = ["Configuration", "Log"]
             self.children = [self.label, self.header_box, self.job.progress,
@@ -367,3 +368,24 @@ class PlotWidgetList(ItemList):
 class PlotList(ItemList):
     def __init__(self, label, plots, **kwargs):
         super().__init__(label, plots, **kwargs)
+
+
+class TimeSeriesPlot(Plot):
+    def __init__(self, jobs):
+
+        widget = plt.figure(title='Line Chart')
+        np.random.seed(0)
+        n = 200
+        x = np.linspace(0.0, 10.0, n)
+        y = np.cumsum(np.random.randn(n))
+        plt.plot(x, y)
+
+        super().__init__(jobs, widget)
+
+    def update_plot(self):
+        self.widget.marks[0].y = np.cumsum(np.random.randn(200))
+
+    @staticmethod
+    def is_job_list_valid(jobs):
+        return True
+
