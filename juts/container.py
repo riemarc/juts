@@ -215,7 +215,11 @@ class Job(Thread):
         self.logger.info("queue empty")
 
         self.logger.info("fetch results")
-        self._result = Result(dict(return_dict))
+        if len(return_dict) > 0:
+            self._result = Result(OrderedDict(return_dict))
+
+        else:
+            self._result = Result(OrderedDict(self._live_result))
 
         self.logger.info("join process")
         process.join()
