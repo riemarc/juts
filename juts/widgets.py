@@ -3,7 +3,7 @@ from collections import OrderedDict
 from ast import literal_eval
 import ipywidgets as iw
 import numpy as np
-from bqplot import pyplot as plt
+import bqplot as bq
 
 
 class ConfigurationView(iw.Accordion):
@@ -181,7 +181,7 @@ class JobView(iw.VBox):
 
 
 class ItemList(iw.VBox):
-    def __init__(self, label, items, **kwargs):
+    def __init__(self, label, items, mode, **kwargs):
         self.label = iw.Label(label)
 
         if items is None:
@@ -192,7 +192,15 @@ class ItemList(iw.VBox):
 
         select = [self.get_item_str(it) for it in self.item_list]
         select_layout = iw.Layout(width="auto", height="100px")
-        self.select = iw.Select(options=select, layout=select_layout)
+        if mode == "select":
+            self.select = iw.Select(options=select, layout=select_layout)
+
+        elif mode == "select_multiple":
+            self.select = iw.SelectMultiple(options=select, layout=select_layout)
+
+        else:
+            raise NotImplementedError
+
         super().__init__([self.label, self.select], **kwargs)
 
     @staticmethod
@@ -204,7 +212,11 @@ class ItemList(iw.VBox):
         self.select.options = (
             tuple(list(self.select.options) +
                   [self.get_item_str(it) for it in items]))
-        self.select.index = None
+
+        if isinstance(self.select, iw.Select):
+            self.select.index = None
+        else:
+            self.select.index = tuple()
 
     def pop_item(self, index=None):
         if not index:
@@ -215,19 +227,27 @@ class ItemList(iw.VBox):
             it for i, it in enumerate(self.item_list) if i != index]
         self.select.options = tuple([
             it for i, it in enumerate(self.select.options) if i != index])
-        self.select.index = None
+
+        if isinstance(self.select, iw.Select):
+            self.select.index = None
+        else:
+            self.select.index = tuple()
 
         return item
 
     def sync_items(self, jobs):
         self.item_list = jobs
         self.select.options = tuple([it.config.name for it in jobs])
-        self.select.index = None
+
+        if isinstance(self.select, iw.Select):
+            self.select.index = None
+        else:
+            self.select.index = tuple()
 
 
 class JobList(ItemList):
     def __init__(self, label, jobs, **kwargs):
-        super().__init__(label, jobs, **kwargs)
+        super().__init__(label, jobs, "select", **kwargs)
 
     @staticmethod
     def get_item_str(it):
@@ -300,7 +320,7 @@ class VisualizerForm(iw.GridBox):
         self.create_plot_bt = iw.Button(
             description="Create Plot", icon="play",
             layout=head_it_layout("create_button"))
-        self.widget_list = JobList(
+        self.widget_list = PlotWidgetList(
             "Plot Widgets", tuple(), layout=head_it_layout("widget_list"))
         self.valid_icon = iw.Valid(value=True)
         widget_list_header = iw.HBox([self.widget_list.label, self.valid_icon])
@@ -310,7 +330,7 @@ class VisualizerForm(iw.GridBox):
         self.discard_plot_bt = iw.Button(
             description="Discard Plot(s)", icon="remove",
             layout=head_it_layout("discard_plot_button"))
-        self.plot_list = JobList(
+        self.plot_list = PlotList(
             "Plots", tuple(), layout=head_it_layout("plot_list"))
 
         self.list_labels = ["job", "widget", "plot"]
@@ -358,7 +378,7 @@ class UserInterfaceForm(iw.Tab):
 
 class PlotWidgetList(ItemList):
     def __init__(self, label, widgets, **kwargs):
-        super().__init__(label, widgets, **kwargs)
+        super().__init__(label, widgets, "select", **kwargs)
 
     @staticmethod
     def get_item_str(it):
@@ -367,25 +387,48 @@ class PlotWidgetList(ItemList):
 
 class PlotList(ItemList):
     def __init__(self, label, plots, **kwargs):
-        super().__init__(label, plots, **kwargs)
+        super().__init__(label, plots, "select_multiple", **kwargs)
+
+    @staticmethod
+    def get_item_str(it):
+        return it.__class__.__name__
 
 
 class TimeSeriesPlot(Plot):
     def __init__(self, jobs):
+        sc_x = bq.LinearScale()
+        sc_y = bq.LinearScale()
+        self.plots = OrderedDict()
+        self.indices = OrderedDict()
+        for job in jobs:
+            for i, name in enumerate(self.jobs[0].result):
+                if name not in self.plots:
+                    self.plots[name] = OrderedDict()
+                    self.indices[name] = OrderedDict()
 
-        widget = plt.figure(title='Line Chart')
-        np.random.seed(0)
-        n = 200
-        x = np.linspace(0.0, 10.0, n)
-        y = np.cumsum(np.random.randn(n))
-        plt.plot(x, y)
+                line = bq.Lines(
+                    scales={'x': sc_x, 'y': sc_y}, name=job.config.name)
+                self.plots[name][job.config.name] = line
+                self.indices[name][job.config.name] = i
+
+        self.figures = OrderedDict()
+        for name in self.plots:
+            ax_x = bq.Axis(scale=sc_x, label='time')
+            ax_y = bq.Axis(scale=sc_y, orientation='vertical', label=name)
+            lines = list(self.plots[name].values())
+            self.figures[name] = bq.Figure(marks=lines, axes=[ax_x, ax_y])
+
+        widget = iw.Box(list(self.figures.values()))
 
         super().__init__(jobs, widget)
 
     def update_plot(self):
-        self.widget.marks[0].y = np.cumsum(np.random.randn(200))
+        for job in self.jobs:
+            for name, res in job.result.items():
+                x = res[:, 0]
+                y = res[:, 1]
+                index = self.indices[name][job.config.name]
+                self.figures[name].marks[index].x = x
+                self.figures[name].marks[index].y = y
 
-    @staticmethod
-    def is_job_list_valid(jobs):
-        return True
 

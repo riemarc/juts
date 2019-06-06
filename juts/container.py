@@ -298,7 +298,7 @@ class JobScheduler(Thread):
             if job.job_index == job_index:
                 index = i
 
-        if index is None:
+        if index < 0 or index >= len(self.busy_jobs):
             raise ValueError("Job is lost in busy queue.")
 
         else:
@@ -359,27 +359,38 @@ class Plot(Thread):
 
     def _update_plot(self):
         self.last_update = time.time()
-        self.update_plot([job.result for job in self.jobs])
+        self.update_plot()
 
     @abstractmethod
-    def update_plot(self, data):
+    def update_plot(self):
         pass
+
+    # def run(self):
+    #     while any(job.is_alive() for job in self.jobs):
+    #         if self.update_event.wait(self.fallback_cycle):
+    #             # update plot after self.plot_update_cycle at the earliest
+    #             if time.time() - self.last_update >= self.update_cycle:
+    #                 self._update_plot()
+    #
+    #             # reset update_event, even plot was not updated
+    #             self.update_event.clear()
+    #
+    #         else:
+    #             # call self.update_plot at least each self.fallback_cycle
+    #             self._update_plot()
+    #
+    #     # update plot for the last time
+    #     self._update_plot()
+
+    #vs.
 
     def run(self):
         while any(job.is_alive() for job in self.jobs):
             if self.update_event.wait(self.fallback_cycle):
-                # update plot after self.plot_update_cycle at the earliest
-                if time.time() - self.last_update >= self.update_cycle:
+                self.update_event.clear()
+                with self.widget.hold_sync():
                     self._update_plot()
 
-                # reset update_event, even plot was not updated
-                self.update_event.clear()
-
-            else:
-                # call self.update_plot at least each self.fallback_cycle
-                self._update_plot()
-
-
-        # when all jobs are joined update plot for the last time
         self._update_plot()
+
 

@@ -1,5 +1,5 @@
 from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
-from .container import JobScheduler, Job, Configuration, load_configurations, Signal
+from .container import JobScheduler, Job, Configuration, load_configurations
 import warnings
 
 
@@ -30,9 +30,9 @@ def on_unblocked_signal(meth):
 
 
 class SchedulerInterface(SchedulerForm):
-    def __init__(self, handle=None, config=None):
-        if isinstance(config, str):
-            config = load_configurations(config)
+    def __init__(self, handle=None, config=None, fname=None):
+        if isinstance(fname, str):
+            config = load_configurations(fname)
 
         if handle is None:
             jobs = list()
@@ -155,10 +155,22 @@ class VisualizerInterface(VisualizerForm):
     def __init__(self, play_queue_bt):
         super().__init__(play_queue_bt)
 
+        self.create_plot_bt.on_click(self.on_create_plot_bt)
+
+    def add_visualizer(self, visualizer):
+        self.widget_list.append_items([visualizer])
+
+    def on_create_plot_bt(self, change):
+        indices = self.job_list.select.index
+        jobs = [self.job_list.item_list[i] for i in indices]
+        pwidget = self.widget_list.item_list[self.widget_list.select.index]
+        plot = pwidget(jobs)
+        self.plot_list.append_items([plot])
+
 
 class UserInterface(UserInterfaceForm):
-    def __init__(self, handle=None, config=None):
-        scheduler = SchedulerInterface(handle, config)
+    def __init__(self, handle=None, config=None, fname=None):
+        scheduler = SchedulerInterface(handle, config, fname)
         visualizer = VisualizerInterface(scheduler.play_queue_bt)
         super().__init__(scheduler, visualizer)
 
@@ -166,6 +178,9 @@ class UserInterface(UserInterfaceForm):
 
     def add_config(self, handle, config):
         self.scheduler.add_config(handle, config)
+
+    def add_visualizer(self, visualizer):
+        self.visualizer.add_visualizer(visualizer)
 
     def on_add_to_visu(self, change):
         job_list = None
