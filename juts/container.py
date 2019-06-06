@@ -2,7 +2,7 @@ from multiprocessing import Process, Queue, Manager, cpu_count
 from yamlordereddictloader import Dumper, Loader
 from collections import OrderedDict, Mapping
 from abc import abstractmethod
-from threading import Thread
+from threading import Thread, Event
 from pprint import pformat
 from numbers import Number
 from queue import Empty
@@ -123,6 +123,7 @@ class Result(OrderedDict):
 
 
 log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
 
 class Job(Thread):
     job_count = 0
@@ -335,24 +336,46 @@ class Signal(iw.ValueWidget):
             return abs(value) - 1
 
 
-class Plot:
+class Plot(Thread):
     def __init__(self, jobs, widget):
+        super().__init__()
+
         self.jobs = jobs
         self.widget = widget
         self.last_update = time.time()
-        self.plot_update_cycle = 0.1
+        self.update_cycle = 0.1
+        self.fallback_cycle = 1
+        self.update_event = Event()
 
         for job in jobs:
             job.result_update.observe(self.on_result_update, names="value")
-            job.job_finished.observe(self.on_job_finished, names="value")
 
     def on_result_update(self, change):
-        if time.time() - self.last_update >= self.plot_update_cycle:
-            self.update_plot([job.result for job in self.jobs])
+        self.update_event.set()
 
-    def on_job_finished(self, change):
+    def _update_plot(self):
+        self.last_update = time.time()
         self.update_plot([job.result for job in self.jobs])
 
     @abstractmethod
     def update_plot(self, data):
         pass
+
+    def run(self):
+        while any(job.is_alive() for job in self.jobs):
+            if self.update_event.wait(self.fallback_cycle):
+                # update plot after self.plot_update_cycle at the earliest
+                if time.time() - self.last_update >= self.update_cycle:
+                    self._update_plot()
+
+                # reset update_event, even plot was not updated
+                self.update_event.clear()
+
+            else:
+                # call self.update_plot at least each self.fallback_cycle
+                self._update_plot()
+
+
+        # when all jobs are joined update plot for the last time
+        self._update_plot()
+
