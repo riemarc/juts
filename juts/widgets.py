@@ -1,8 +1,7 @@
-from .container import (Configuration, Job, Plot)
+from .container import Configuration, Job, Plot
 from collections import OrderedDict
 from ast import literal_eval
 import ipywidgets as iw
-import numpy as np
 import bqplot as bq
 
 
@@ -255,7 +254,7 @@ class JobList(ItemList):
 
 
 class SchedulerForm(iw.GridBox):
-    def __init__(self, jobs):
+    def __init__(self):
         head_it_layout = lambda lbl: iw.Layout(width='auto', grid_area=lbl)
 
         self.load_configs_bt = iw.Button(
@@ -272,7 +271,7 @@ class SchedulerForm(iw.GridBox):
             layout=head_it_layout("run_button"))
 
         self.config_list = JobList(
-            "Configurations", jobs, layout=head_it_layout("config_list"))
+            "Configurations", tuple(), layout=head_it_layout("config_list"))
         self.busy_list = JobList(
             "Busy", tuple(), layout=head_it_layout("busy_list"))
         self.queue_list = JobList(
@@ -396,12 +395,44 @@ class PlotList(ItemList):
 
 class TimeSeriesPlot(Plot):
     def __init__(self, jobs):
+        self.indices = None
+        self.jobs = jobs
+        self.update_plot()
+        widget = iw.Box(list(self.figures.values()))
+
+        super().__init__(jobs, widget)
+
+    def update_plot(self):
+        if self.result_structure_changed():
+            self.create_figures()
+
+        for job in self.jobs:
+            for name, res in job.result.items():
+                x = res[:, 0]
+                y = res[:, 1]
+                index = self.indices[name][job.config.name]
+                self.figures[name].marks[index].x = x
+                self.figures[name].marks[index].y = y
+
+    def result_structure_changed(self):
+        indices = OrderedDict()
+        for job in self.jobs:
+            for i, name in enumerate(job.result):
+                if name not in self.indices:
+                    self.indices[name] = OrderedDict()
+
+                self.indices[name][job.config.name] = i
+
+        return not indices == self.indices
+
+    def create_figures(self):
         sc_x = bq.LinearScale()
         sc_y = bq.LinearScale()
         self.plots = OrderedDict()
         self.indices = OrderedDict()
-        for job in jobs:
-            for i, name in enumerate(self.jobs[0].result):
+
+        for job in self.jobs:
+            for i, name in enumerate(job.result):
                 if name not in self.plots:
                     self.plots[name] = OrderedDict()
                     self.indices[name] = OrderedDict()
@@ -417,18 +448,3 @@ class TimeSeriesPlot(Plot):
             ax_y = bq.Axis(scale=sc_y, orientation='vertical', label=name)
             lines = list(self.plots[name].values())
             self.figures[name] = bq.Figure(marks=lines, axes=[ax_x, ax_y])
-
-        widget = iw.Box(list(self.figures.values()))
-
-        super().__init__(jobs, widget)
-
-    def update_plot(self):
-        for job in self.jobs:
-            for name, res in job.result.items():
-                x = res[:, 0]
-                y = res[:, 1]
-                index = self.indices[name][job.config.name]
-                self.figures[name].marks[index].x = x
-                self.figures[name].marks[index].y = y
-
-

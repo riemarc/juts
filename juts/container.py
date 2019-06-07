@@ -238,9 +238,8 @@ def as_job_list(config_list):
 
 
 class JobScheduler(Thread):
-    def __init__(self, handle):
+    def __init__(self):
         super().__init__()
-        self.handle = handle
         self.sync_queue = Signal()
         self.sync_busy = Signal()
         self.sync_done = Signal()
@@ -248,6 +247,7 @@ class JobScheduler(Thread):
         self.queue_jobs = list()
         self.busy_jobs = list()
         self.done_jobs = list()
+
         self.is_running = False
 
     def append_queue_job(self, job):
@@ -364,25 +364,6 @@ class Plot(Thread):
     @abstractmethod
     def update_plot(self):
         pass
-
-    # def run(self):
-    #     while any(job.is_alive() for job in self.jobs):
-    #         if self.update_event.wait(self.fallback_cycle):
-    #             # update plot after self.plot_update_cycle at the earliest
-    #             if time.time() - self.last_update >= self.update_cycle:
-    #                 self._update_plot()
-    #
-    #             # reset update_event, even plot was not updated
-    #             self.update_event.clear()
-    #
-    #         else:
-    #             # call self.update_plot at least each self.fallback_cycle
-    #             self._update_plot()
-    #
-    #     # update plot for the last time
-    #     self._update_plot()
-
-    #vs.
 
     def run(self):
         while any(job.is_alive() for job in self.jobs):

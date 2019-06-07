@@ -45,7 +45,7 @@ config_invalid = OrderedDict({
 def function(config, process_queue=None, return_dict=None):
     for i in range(10):
         return_dict.update({i:i})
-        process_queue.put([i])
+        process_queue.put(dict(progress=i))
         time.sleep(.5)
 
 

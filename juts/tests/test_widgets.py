@@ -19,7 +19,7 @@ config_flat = dict({
 def function(s, process_queue=None, return_dict=None):
     for i in range(101):
         return_dict.update({str(i):i})
-        process_queue.put([i])
+        process_queue.put(dict(progress=i))
         time.sleep(.01)
 
 config = jt.Configuration({"config_1": config_flat}, function)

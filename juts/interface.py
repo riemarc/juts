@@ -1,15 +1,7 @@
-from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
 from .container import JobScheduler, Job, Configuration, load_configurations
+from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
 import warnings
 
-
-def get_jobs_from_user_input(handle, config):
-    jobs = list()
-    for key, value in config.items():
-        job_config = {key: value}
-        jobs.append(Job(Configuration(job_config, handle)))
-
-    return jobs
 
 def block_signal(meth):
     def handle(*args, **kwargs):
@@ -21,6 +13,7 @@ def block_signal(meth):
 
     return handle
 
+
 def on_unblocked_signal(meth):
     def handle(*args, **kwargs):
         if not args[0]._block_signal:
@@ -30,17 +23,8 @@ def on_unblocked_signal(meth):
 
 
 class SchedulerInterface(SchedulerForm):
-    def __init__(self, handle=None, config=None, fname=None):
-        if isinstance(fname, str):
-            config = load_configurations(fname)
-
-        if handle is None:
-            jobs = list()
-
-        else:
-            jobs = get_jobs_from_user_input(handle, config)
-
-        super().__init__(jobs)
+    def __init__(self):
+        super().__init__()
 
         self.load_configs_bt.on_click(self.on_load_configs)
         self.save_configs_bt.on_click(self.on_save_configs)
@@ -58,7 +42,7 @@ class SchedulerInterface(SchedulerForm):
         self.job_view.save_result_bt.on_click(self.on_save_result_bt)
         self.job_view.discard_bt.on_click(self.on_discard_bt)
 
-        self.job_scheduler = JobScheduler(handle)
+        self.job_scheduler = JobScheduler()
         self.job_scheduler.start()
         self.job_scheduler.sync_queue.observe(self.on_js_sync_queue, names="value")
         self.job_scheduler.sync_busy.observe(self.on_js_sync_busy, names="value")
@@ -146,8 +130,17 @@ class SchedulerInterface(SchedulerForm):
     def on_js_sync_done(self, change):
         self.result_list.sync_items(list(self.job_scheduler.done_jobs))
 
+    @staticmethod
+    def get_jobs_from_user_input(handle, config):
+        jobs = list()
+        for key, value in config.items():
+            job_config = {key: value}
+            jobs.append(Job(Configuration(job_config, handle)))
+
+        return jobs
+
     def add_config(self, handle, config):
-        jobs = get_jobs_from_user_input(handle, config)
+        jobs = self.get_jobs_from_user_input(handle, config)
         self.config_list.append_items(jobs)
 
 
@@ -169,14 +162,20 @@ class VisualizerInterface(VisualizerForm):
 
 
 class UserInterface(UserInterfaceForm):
-    def __init__(self, handle=None, config=None, fname=None):
-        scheduler = SchedulerInterface(handle, config, fname)
+    def __init__(self):
+        scheduler = SchedulerInterface()
         visualizer = VisualizerInterface(scheduler.play_queue_bt)
         super().__init__(scheduler, visualizer)
 
         self.scheduler.job_view.add_to_visu_bt.on_click(self.on_add_to_visu)
 
-    def add_config(self, handle, config):
+    def add_config(self, handle, config=None, configfile=None):
+        if config and configfile:
+            raise NotImplementedError
+
+        elif configfile:
+            config = load_configurations(configfile)
+
         self.scheduler.add_config(handle, config)
 
     def add_visualizer(self, visualizer):

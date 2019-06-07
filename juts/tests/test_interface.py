@@ -26,7 +26,7 @@ job = jt.Job(jt.Configuration(config, function))
 
 class TestInterface(TestCase):
     def test_widgets(self):
-        ui = jt.UserInterface(function, config)
+        ui = jt.UserInterface()
         ui.scheduler.job_view.queue_bt.value = True
         # ui.scheduler.config_view.queue_bt.value = True
         print(ui.scheduler.config_list.select)
@@ -35,6 +35,7 @@ class TestInterface(TestCase):
         ui.add_config(function, config)
         ui.scheduler.on_queue_bt(dict(new=1))
 
-        ui = jt.UserInterface(handle=function, fname="configurations.yml")
+        ui = jt.UserInterface()
+        ui.add_config(handle=function, configfile="configurations.yml")
         ui.add_visualizer(jt.TimeSeriesPlot)
 
