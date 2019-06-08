@@ -86,7 +86,6 @@ class SchedulerInterface(SchedulerForm):
     def on_result_change(self, change):
         self.view_new_job(3, change["new"])
 
-    @on_unblocked_signal
     def view_new_job(self, list_index, item_index):
         if item_index is not None:
             for i, lst in enumerate(self.job_lists):
@@ -149,16 +148,36 @@ class VisualizerInterface(VisualizerForm):
         super().__init__(play_queue_bt)
 
         self.create_plot_bt.on_click(self.on_create_plot_bt)
+        self.plot_list.select.observe(self.on_plot_change, names="index")
 
     def add_visualizer(self, visualizer):
         self.widget_list.append_items([visualizer])
 
+    def on_plot_change(self, change):
+        plots = [self.plot_list.item_list[i] for i in change["new"]]
+        self.plot_view.sync_plots(plots)
+
     def on_create_plot_bt(self, change):
         indices = self.job_list.select.index
         jobs = [self.job_list.item_list[i] for i in indices]
+
+        if self.widget_list.select.index is None:
+            self.valid_icon.value = False
+            self.valid_icon.readout = "select a widget"
+
+            return
+
+        if len(self.job_list.select.index) ==  0:
+            self.valid_icon.value = False
+            self.valid_icon.readout = "select a job"
+
+            return
+
         pwidget = self.widget_list.item_list[self.widget_list.select.index]
         plot = pwidget(jobs)
+        plot.start()
         self.plot_list.append_items([plot])
+        self.valid_icon.value = True
 
 
 class UserInterface(UserInterfaceForm):

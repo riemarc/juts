@@ -131,12 +131,14 @@ class Job(Thread):
     def __init__(self, config, result=None):
         Job.job_count += 1
         self.job_index = Job.job_count
+        # since self.is_alive() returns True before self.start()
+        self.job_is_alive = True
         super().__init__()
 
         assert isinstance(config, Configuration)
         self._config = config
 
-        self._result = None
+        self._result = Result()
 
         progress_layout = iw.Layout(width="auto")
         self.progress = iw.FloatProgress(value=0,
@@ -156,7 +158,7 @@ class Job(Thread):
         self.log_handler.setFormatter(log_formatter)
         self.logger.addHandler(self.log_handler)
 
-        self._live_result = dict()
+        self._live_result = Result()
 
     def get_config(self):
         return self._config
@@ -164,7 +166,7 @@ class Job(Thread):
     config = property(get_config)
 
     def get_result(self):
-        if self.is_alive():
+        if self.job_is_alive:
             return self._live_result
 
         else:
@@ -188,8 +190,8 @@ class Job(Thread):
             self.result_update()
 
     def update_live_results(self, status):
-        for key, value in status:
-            if not key in self._live_result:
+        for key, value in status.items():
+            if key not in self._live_result:
                 self._live_result[key] = list()
 
             self._live_result[key].append(value)
@@ -226,6 +228,8 @@ class Job(Thread):
 
         self.progress.bar_style = "success"
         self.job_finished(self.job_index)
+
+        self.job_is_alive = False
 
 
 def as_job_list(config_list):
@@ -348,7 +352,7 @@ class Plot(Thread):
         self.widget = widget
         self.last_update = time.time()
         self.update_cycle = 0.1
-        self.fallback_cycle = 1
+        self.fallback_cycle = 5
         self.update_event = Event()
 
         for job in jobs:
@@ -357,21 +361,24 @@ class Plot(Thread):
     def on_result_update(self, change):
         self.update_event.set()
 
-    def _update_plot(self):
-        self.last_update = time.time()
-        self.update_plot()
-
     @abstractmethod
     def update_plot(self):
         pass
 
     def run(self):
-        while any(job.is_alive() for job in self.jobs):
+        while any(job.job_is_alive for job in self.jobs):
+            self.update_plot()
             if self.update_event.wait(self.fallback_cycle):
                 self.update_event.clear()
-                with self.widget.hold_sync():
-                    self._update_plot()
 
-        self._update_plot()
+                cycle_margin = self.update_cycle - time.time() + self.last_update
+                self.last_update = time.time()
+                if cycle_margin > 0:
+                    time.sleep(cycle_margin)
+
+                with self.widget.hold_sync():
+                    self.update_plot()
+
+        self.update_plot()
 
 

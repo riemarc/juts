@@ -1,6 +1,7 @@
 from .container import Configuration, Job, Plot
 from collections import OrderedDict
 from ast import literal_eval
+from numbers import Number
 import ipywidgets as iw
 import bqplot as bq
 
@@ -179,6 +180,28 @@ class JobView(iw.VBox):
             self.text.value, self.job.config.handle)
 
 
+class PlotView(iw.VBox):
+    def __init__(self):
+        self.label = iw.Label("Plot View")
+        self.plots = dict()
+
+        super().__init__([self.label])
+
+    def sync_plots(self, plots):
+        children = [self.label]
+        for plot in plots:
+            if plot in self.plots:
+                children.append(self.plots[plot])
+
+            else:
+                widget = iw.Accordion([plot.widget])
+                widget.set_title(0, PlotList.get_item_str(plot))
+                self.plots[plot] = widget
+                children.append(widget)
+
+        self.children = tuple(children)
+
+
 class ItemList(iw.VBox):
     def __init__(self, label, items, mode, **kwargs):
         self.label = iw.Label(label)
@@ -253,6 +276,35 @@ class JobList(ItemList):
         return it.config.name
 
 
+class VisuJobList(ItemList):
+    def __init__(self, label, jobs, **kwargs):
+        super().__init__(label, jobs, "select_multiple", **kwargs)
+
+    @staticmethod
+    def get_item_str(it):
+        return it.config.name
+
+
+class PlotWidgetList(ItemList):
+    def __init__(self, label, widgets, **kwargs):
+        super().__init__(label, widgets, "select", **kwargs)
+
+    @staticmethod
+    def get_item_str(it):
+        return it.__name__
+
+
+class PlotList(ItemList):
+    def __init__(self, label, plots, **kwargs):
+        super().__init__(label, plots, "select_multiple", **kwargs)
+
+    @staticmethod
+    def get_item_str(it):
+        args = ", ".join([job.config.name for job in it.jobs])
+
+        return "{}({})".format(it.__class__.__name__, args)
+
+
 class SchedulerForm(iw.GridBox):
     def __init__(self):
         head_it_layout = lambda lbl: iw.Layout(width='auto', grid_area=lbl)
@@ -313,7 +365,7 @@ class VisualizerForm(iw.GridBox):
         self.discard_job_bt = iw.Button(
             description="Discard Job(s)", icon="remove",
             layout=head_it_layout("discard_job_button"))
-        self.job_list = JobList(
+        self.job_list = VisuJobList(
             "Jobs", tuple(), layout=head_it_layout("job_list"))
 
         self.create_plot_bt = iw.Button(
@@ -335,18 +387,14 @@ class VisualizerForm(iw.GridBox):
         self.list_labels = ["job", "widget", "plot"]
         self.lists = [self.job_list, self.widget_list, self.job_list]
 
-        self.job_accord = iw.Accordion(layout=head_it_layout(""))
-        self.plot_accord = iw.Accordion(layout=head_it_layout(""))
-        self.tab_widget = iw.Tab([self.job_accord, self.plot_accord],
-                                 layout=head_it_layout("tab_widget"))
-        self.tab_widget.set_title(0, "View Jobs")
-        self.tab_widget.set_title(1, "View Plots")
+        self.plot_view = PlotView()
+        self.plot_view.layout = head_it_layout("plot_view")
 
         spacer = iw.Label(str(""), layout=head_it_layout("spacer"))
 
         grid_items = [play_queue_bt, self.discard_job_bt, self.create_plot_bt,
                       self.discard_plot_bt, self.job_list, self.widget_list,
-                      self.plot_list, self.tab_widget, spacer]
+                      self.plot_list, self.plot_view, spacer]
         grid_layout = iw.Layout(
             width='100%',
             grid_template_rows='auto auto auto',
@@ -356,7 +404,7 @@ class VisualizerForm(iw.GridBox):
                 "run_button discard_job_button create_button create_button discard_plot_button discard_plot_button "
                 "job_list job_list widget_list widget_list plot_list plot_list "
                 "spacer spacer spacer spacer spacer spacer "
-                "tab_widget tab_widget tab_widget tab_widget tab_widget tab_widget "
+                "plot_view plot_view plot_view plot_view plot_view plot_view "
                 ''')
 
         super().__init__(grid_items, layout=grid_layout)
@@ -375,72 +423,75 @@ class UserInterfaceForm(iw.Tab):
         self.set_title(1, "Visualizer")
 
 
-class PlotWidgetList(ItemList):
-    def __init__(self, label, widgets, **kwargs):
-        super().__init__(label, widgets, "select", **kwargs)
-
-    @staticmethod
-    def get_item_str(it):
-        return it.__name__
-
-
-class PlotList(ItemList):
-    def __init__(self, label, plots, **kwargs):
-        super().__init__(label, plots, "select_multiple", **kwargs)
-
-    @staticmethod
-    def get_item_str(it):
-        return it.__class__.__name__
-
-
 class TimeSeriesPlot(Plot):
     def __init__(self, jobs):
-        self.indices = None
+        super().__init__(jobs, iw.Box())
+
+        self.indices = dict()
+        self.figures = dict()
         self.jobs = jobs
         self.update_plot()
-        widget = iw.Box(list(self.figures.values()))
-
-        super().__init__(jobs, widget)
 
     def update_plot(self):
         if self.result_structure_changed():
-            self.create_figures()
+            self.update_figures()
 
-        for job in self.jobs:
-            for name, res in job.result.items():
-                x = res[:, 0]
-                y = res[:, 1]
-                index = self.indices[name][job.config.name]
-                self.figures[name].marks[index].x = x
-                self.figures[name].marks[index].y = y
+        for res_name, job_dict in self.indices.items():
+            for index in job_dict.values():
+                if "time" not in self.jobs[index].result:
+                    continue
+
+                x = self.jobs[index].result["time"]
+                y = self.jobs[index].result[res_name]
+                self.figures[res_name].marks[index].x = x
+                self.figures[res_name].marks[index].y = y
 
     def result_structure_changed(self):
         indices = OrderedDict()
-        for job in self.jobs:
-            for i, name in enumerate(job.result):
-                if name not in self.indices:
-                    self.indices[name] = OrderedDict()
+        for i, job in enumerate(self.jobs):
+            for name, res in job.result.items():
+                if name == "time":
+                    continue
 
-                self.indices[name][job.config.name] = i
+                is_timeseries = self.is_timeseries(res)
+                if name not in indices:
+                    if is_timeseries:
+                        indices[name] = OrderedDict()
 
-        return not indices == self.indices
+                if is_timeseries:
+                    indices[name][job.config.name] = i
 
-    def create_figures(self):
+        res = not indices == self.indices
+
+        if res:
+            self.indices = indices
+
+        return res
+
+    @staticmethod
+    def is_timeseries(result):
+        if not hasattr(result, "__iter__"):
+            return False
+
+        if len(result) == 0:
+            return False
+
+        if not isinstance(result[0], Number):
+            return False
+
+        return True
+
+    def update_figures(self):
         sc_x = bq.LinearScale()
         sc_y = bq.LinearScale()
         self.plots = OrderedDict()
-        self.indices = OrderedDict()
 
-        for job in self.jobs:
-            for i, name in enumerate(job.result):
-                if name not in self.plots:
-                    self.plots[name] = OrderedDict()
-                    self.indices[name] = OrderedDict()
-
+        for res_name, job_dict in self.indices.items():
+            self.plots[res_name] = OrderedDict()
+            for job_name in job_dict:
                 line = bq.Lines(
-                    scales={'x': sc_x, 'y': sc_y}, name=job.config.name)
-                self.plots[name][job.config.name] = line
-                self.indices[name][job.config.name] = i
+                    scales={'x': sc_x, 'y': sc_y}, name=job_name)
+                self.plots[res_name][job_name] = line
 
         self.figures = OrderedDict()
         for name in self.plots:
@@ -448,3 +499,5 @@ class TimeSeriesPlot(Plot):
             ax_y = bq.Axis(scale=sc_y, orientation='vertical', label=name)
             lines = list(self.plots[name].values())
             self.figures[name] = bq.Figure(marks=lines, axes=[ax_x, ax_y])
+
+        self.widget.children = tuple(self.figures.values())

@@ -17,9 +17,14 @@ config_flat = dict({
 
 def function(s, process_queue=None, return_dict=None):
     for i in range(101):
-        return_dict.update({str(i):i})
-        process_queue.put([i])
+        return_dict.update(dict(time_series=[i, i]))
+        #return_dict.update(dict(not_a_time_series=[i]))
+        #return_dict.update(dict(also_not_a_time_series=i))
+        #return_dict.update(dict(not_a_time_series_too=i))
+        process_queue.put(dict(progress=i))
         time.sleep(.01)
+
+    return_dict.update(dict(result_1=[[0, 1], [1, 2], [2, 3]]))
 
 config = {"config_1": config_flat}
 job = jt.Job(jt.Configuration(config, function))
@@ -38,4 +43,15 @@ class TestInterface(TestCase):
         ui = jt.UserInterface()
         ui.add_config(handle=function, configfile="configurations.yml")
         ui.add_visualizer(jt.TimeSeriesPlot)
+
+    def test_time_series_plot(self):
+        conf = jt.Configuration(config, function)
+        job_1 = jt.Job(conf)
+        job_1.start()
+        job_1.join()
+        job_2 = jt.Job(conf)
+
+        plot = jt.TimeSeriesPlot([job_1, job_2])
+        plot.start()
+        plot.join()
 
