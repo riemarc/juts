@@ -149,7 +149,7 @@ class Job(Thread):
                                          layout=progress_layout)
 
         self.job_finished = Signal()
-        self.result_update = Signal()
+        self.live_result_update = Signal()
 
         self.logger = logging.getLogger(str(hash(self)))
         self.logger.setLevel(logging.INFO)
@@ -187,7 +187,7 @@ class Job(Thread):
 
         if status:
             self.update_live_results(status)
-            self.result_update()
+            self.live_result_update()
 
     def update_live_results(self, status):
         for key, value in status.items():
@@ -345,20 +345,20 @@ class Signal(iw.ValueWidget):
 
 
 class Plot(Thread):
-    def __init__(self, jobs, widget):
+    def __init__(self, jobs, widget, update_cycle=0.1, timeout=2):
         super().__init__()
 
         self.jobs = jobs
         self.widget = widget
         self.last_update = time.time()
-        self.update_cycle = 0.1
-        self.fallback_cycle = 5
+        self.update_cycle = update_cycle
+        self.timeout = timeout
         self.update_event = Event()
 
         for job in jobs:
-            job.result_update.observe(self.on_result_update, names="value")
+            job.live_result_update.observe(self.on_live_result_update, names="value")
 
-    def on_result_update(self, change):
+    def on_live_result_update(self, change):
         self.update_event.set()
 
     @abstractmethod
@@ -367,8 +367,7 @@ class Plot(Thread):
 
     def run(self):
         while any(job.job_is_alive for job in self.jobs):
-            self.update_plot()
-            if self.update_event.wait(self.fallback_cycle):
+            if self.update_event.wait(self.timeout):
                 self.update_event.clear()
 
                 cycle_margin = self.update_cycle - time.time() + self.last_update

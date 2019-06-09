@@ -1,4 +1,5 @@
 from .container import Configuration, Job, Plot
+from bqplot.colorschemes import CATEGORY10
 from collections import OrderedDict
 from ast import literal_eval
 from numbers import Number
@@ -425,8 +426,17 @@ class UserInterfaceForm(iw.Tab):
 
 class TimeSeriesPlot(Plot):
     def __init__(self, jobs):
-        super().__init__(jobs, iw.Box())
+        self.n_points = iw.BoundedIntText(
+            value=0,
+            min=0,
+            max=10000000,
+            step=10,
+            description='Number of points (0 means all):',
+            style={'description_width': 'initial'})
+        widget = iw.VBox([self.n_points, iw.Box()])
+        super().__init__(jobs, widget)
 
+        self.color_cycle = CATEGORY10
         self.indices = dict()
         self.figures = dict()
         self.jobs = jobs
@@ -441,8 +451,8 @@ class TimeSeriesPlot(Plot):
                 if "time" not in self.jobs[index].result:
                     continue
 
-                x = self.jobs[index].result["time"]
-                y = self.jobs[index].result[res_name]
+                x = self.jobs[index].result["time"][-self.n_points.value:]
+                y = self.jobs[index].result[res_name][-self.n_points.value:]
                 self.figures[res_name].marks[index].x = x
                 self.figures[res_name].marks[index].y = y
 
@@ -488,16 +498,19 @@ class TimeSeriesPlot(Plot):
 
         for res_name, job_dict in self.indices.items():
             self.plots[res_name] = OrderedDict()
-            for job_name in job_dict:
+            for i, job_name in enumerate(job_dict):
                 line = bq.Lines(
-                    scales={'x': sc_x, 'y': sc_y}, name=job_name)
+                    scales={'x': sc_x, 'y': sc_y},
+                    labels=[job_name],
+                    display_legend=True,
+                    colors=[self.color_cycle[i]])
                 self.plots[res_name][job_name] = line
 
         self.figures = OrderedDict()
         for name in self.plots:
-            ax_x = bq.Axis(scale=sc_x, label='time')
-            ax_y = bq.Axis(scale=sc_y, orientation='vertical', label=name)
+            ax_x = bq.Axis(scale=sc_x, label='time', grid_lines="none")
+            ax_y = bq.Axis(scale=sc_y, orientation='vertical', label=name, grid_lines="none")
             lines = list(self.plots[name].values())
             self.figures[name] = bq.Figure(marks=lines, axes=[ax_x, ax_y])
 
-        self.widget.children = tuple(self.figures.values())
+        self.widget.children[1].children = tuple(self.figures.values())
