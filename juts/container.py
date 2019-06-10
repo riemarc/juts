@@ -1,7 +1,7 @@
 from multiprocessing import Process, Queue, Manager, cpu_count
 from yamlordereddictloader import Dumper, Loader
 from collections import OrderedDict, Mapping
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
 from threading import Thread, Event
 from pprint import pformat
 from numbers import Number
@@ -128,10 +128,10 @@ log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 class Job(Thread):
     job_count = 0
 
-    def __init__(self, config, result=None):
-        Job.job_count += 1
+    def __init__(self, config):
         self.job_index = Job.job_count
-        # since self.is_alive() returns True before self.start()
+        Job.job_count += 1
+        # since self.is_alive() returns False before self.start()
         self.job_is_alive = True
         super().__init__()
 
@@ -227,6 +227,7 @@ class Job(Thread):
         process.join()
 
         self.progress.bar_style = "success"
+        self.progress.value = 100
         self.job_finished(self.job_index)
 
         self.job_is_alive = False
@@ -344,8 +345,8 @@ class Signal(iw.ValueWidget):
             return abs(value) - 1
 
 
-class Plot(Thread):
-    def __init__(self, jobs, widget, update_cycle=0.1, timeout=2):
+class Plot(Thread, metaclass=ABCMeta):
+    def __init__(self, jobs, widget, update_cycle=0.1, timeout=2, jobs_valid=True):
         super().__init__()
 
         self.jobs = jobs
@@ -353,6 +354,7 @@ class Plot(Thread):
         self.last_update = time.time()
         self.update_cycle = update_cycle
         self.timeout = timeout
+        self.jobs_valid = jobs_valid
         self.update_event = Event()
 
         for job in jobs:

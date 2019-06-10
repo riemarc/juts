@@ -186,10 +186,10 @@ class PlotView(iw.VBox):
         self.label = iw.Label("Plot View")
         self.plots = dict()
 
-        super().__init__([self.label])
+        super().__init__([self.label, iw.HBox()])
 
     def sync_plots(self, plots):
-        children = [self.label]
+        children = []
         for plot in plots:
             if plot in self.plots:
                 children.append(self.plots[plot])
@@ -200,7 +200,7 @@ class PlotView(iw.VBox):
                 self.plots[plot] = widget
                 children.append(widget)
 
-        self.children = tuple(children)
+        self.children[1].children = tuple(children)
 
 
 class ItemList(iw.VBox):
@@ -425,7 +425,7 @@ class UserInterfaceForm(iw.Tab):
 
 
 class TimeSeriesPlot(Plot):
-    def __init__(self, jobs):
+    def __init__(self, jobs, plot_layout="tab"):
         self.n_points = iw.BoundedIntText(
             value=0,
             min=0,
@@ -434,7 +434,16 @@ class TimeSeriesPlot(Plot):
             description='Number of points (0 means all):',
             style={'description_width': 'initial'})
         self.n_points.observe(self.on_n_points, names="value")
-        widget = iw.VBox([self.n_points, iw.VBox()])
+
+        self.plot_layout = plot_layout
+        if plot_layout == "tab":
+            box = iw.Tab()
+        elif plot_layout == "vbox":
+            box = iw.VBox()
+        else:
+            raise NotImplementedError
+
+        widget = iw.VBox([self.n_points, box])
         super().__init__(jobs, widget)
 
         self.indices = dict()
@@ -545,6 +554,17 @@ class TimeSeriesPlot(Plot):
         self.layout_figures()
 
     def layout_figures(self):
+        if self.plot_layout == "tab":
+            self.layout_figures_tab()
+        else:
+            self.layout_figures_vbox()
+
+    def layout_figures_tab(self):
+        self.widget.children[1].children = list(self.fig_wids.values())
+        for i, res_name in enumerate(self.fig_wids):
+            self.widget.children[1].set_title(i, res_name)
+
+    def layout_figures_vbox(self):
         n_columns = 2
         n_figures = len(self.figures)
         n_rows = int(np.ceil(n_figures / n_columns))

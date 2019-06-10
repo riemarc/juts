@@ -1,0 +1,17 @@
+linear_control:
+    system_parameters:
+        J: 0.0135
+        Ja: 0.0012
+        m: 0.416
+        l: 0.175
+        k: 0.0346
+        Ra: 5.78
+        g: 9.81
+        dPsiEncoder: 4096
+        dPhiEncoder: 2000
+        vPWM: 24
+        dPWM: 32767
+        ue: 3.71
+
+    simulation_parameters:
+        x0: [1, 0, 0, 0]

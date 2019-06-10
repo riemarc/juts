@@ -175,9 +175,15 @@ class VisualizerInterface(VisualizerForm):
 
         pwidget = self.widget_list.item_list[self.widget_list.select.index]
         plot = pwidget(jobs)
-        plot.start()
-        self.plot_list.append_items([plot])
-        self.valid_icon.value = True
+        if plot.jobs_valid:
+            plot.start()
+            self.plot_list.append_items([plot])
+            self.valid_icon.value = True
+
+        else:
+            self.valid_icon.value = False
+            self.valid_icon.readout = "not compatible"
+
 
 
 class UserInterface(UserInterfaceForm):
