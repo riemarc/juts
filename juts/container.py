@@ -366,7 +366,7 @@ class Plot(Thread):
         pass
 
     def run(self):
-        while any(job.job_is_alive for job in self.jobs):
+        while any([job.job_is_alive for job in self.jobs]):
             if self.update_event.wait(self.timeout):
                 self.update_event.clear()
 

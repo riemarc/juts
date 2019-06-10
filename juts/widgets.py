@@ -1,10 +1,10 @@
 from .container import Configuration, Job, Plot
-from bqplot.colorschemes import CATEGORY10
 from collections import OrderedDict
 from ast import literal_eval
 from numbers import Number
 import ipywidgets as iw
 import bqplot as bq
+import numpy as np
 
 
 class ConfigurationView(iw.Accordion):
@@ -430,46 +430,55 @@ class TimeSeriesPlot(Plot):
             value=0,
             min=0,
             max=10000000,
-            step=10,
+            step=1,
             description='Number of points (0 means all):',
             style={'description_width': 'initial'})
-        widget = iw.VBox([self.n_points, iw.Box()])
+        self.n_points.observe(self.on_n_points, names="value")
+        widget = iw.VBox([self.n_points, iw.VBox()])
         super().__init__(jobs, widget)
 
-        self.color_cycle = CATEGORY10
         self.indices = dict()
         self.figures = dict()
         self.jobs = jobs
         self.update_plot()
+
+    def on_n_points(self, change):
+        if all([not job.is_alive() for job in self.jobs]):
+            self.update_plot()
 
     def update_plot(self):
         if self.result_structure_changed():
             self.update_figures()
 
         for res_name, job_dict in self.indices.items():
+            x = list()
+            y = list()
             for index in job_dict.values():
                 if "time" not in self.jobs[index].result:
                     continue
 
-                x = self.jobs[index].result["time"][-self.n_points.value:]
-                y = self.jobs[index].result[res_name][-self.n_points.value:]
-                self.figures[res_name].marks[index].x = x
-                self.figures[res_name].marks[index].y = y
+                x.append(list(
+                    self.jobs[index].result["time"][-self.n_points.value:]))
+                y.append(list(
+                    self.jobs[index].result[res_name][-self.n_points.value:]))
+
+            self.figures[res_name].marks[0].x = x
+            self.figures[res_name].marks[0].y = y
 
     def result_structure_changed(self):
         indices = OrderedDict()
         for i, job in enumerate(self.jobs):
-            for name, res in job.result.items():
-                if name == "time":
+            for res_name, res in job.result.items():
+                if res_name == "time":
                     continue
 
                 is_timeseries = self.is_timeseries(res)
-                if name not in indices:
+                if res_name not in indices:
                     if is_timeseries:
-                        indices[name] = OrderedDict()
+                        indices[res_name] = OrderedDict()
 
                 if is_timeseries:
-                    indices[name][job.config.name] = i
+                    indices[res_name][job.config.name] = i
 
         res = not indices == self.indices
 
@@ -477,6 +486,80 @@ class TimeSeriesPlot(Plot):
             self.indices = indices
 
         return res
+
+    def update_figures(self):
+        self.figures = OrderedDict()
+        self.fig_wids = OrderedDict()
+        for res_name, job_dict in self.indices.items():
+            sc_x = bq.LinearScale()
+            sc_y = bq.LinearScale()
+            line = bq.Lines(
+                scales={'x': sc_x, 'y': sc_y},
+                labels=list(job_dict.keys()),
+                display_legend=True)
+            ax_x = bq.Axis(scale=sc_x, label='time')
+            ax_y = bq.Axis(scale=sc_y, orientation='vertical', label=res_name)
+            self.figures[res_name] = bq.Figure(
+                marks=[line], axes=[ax_x, ax_y], legend_location="top-right")
+
+            pz = bq.PanZoom(scales={'x': [sc_x], 'y': [sc_y]})
+            pzx = bq.PanZoom(scales={'x': [sc_x]})
+            pzy = bq.PanZoom(scales={'y': [sc_y], })
+
+            zoom_interacts = iw.ToggleButtons(
+                options=OrderedDict([
+                    ('xy ', pz),
+                    ('x ', pzx),
+                    ('y ', pzy),
+                    (' ', None)]),
+                icons=["arrows", "arrows-h", "arrows-v", "stop"],
+                tooltips=["zoom/pan in x & y", "zoom/pan in x only",
+                          "zoom/pan in y only", "cancel zoom/pan"]
+            )
+            zoom_interacts.value = None
+            zoom_interacts.style.button_width = '60px'
+
+            reset_zoom_bt = iw.Button(
+                description='',
+                disabled=False,
+                tooltip='Reset zoom',
+                icon='arrows-alt'
+            )
+
+            def reset_zoom(new, fig=self.figures[res_name]):
+                fig.axes[0].scale.min = None
+                fig.axes[1].scale.min = None
+                fig.axes[0].scale.max = None
+                fig.axes[1].scale.max = None
+
+            reset_zoom_bt.on_click(reset_zoom)
+            reset_zoom_bt.layout.width = '60px'
+
+            iw.link((zoom_interacts, 'value'),
+                    (self.figures[res_name], 'interaction'))
+            fig_wid = iw.VBox([
+                self.figures[res_name],
+                iw.HBox([zoom_interacts, reset_zoom_bt])], align_self='stretch')
+            self.fig_wids[res_name] = fig_wid
+
+        self.layout_figures()
+
+    def layout_figures(self):
+        n_columns = 2
+        n_figures = len(self.figures)
+        n_rows = int(np.ceil(n_figures / n_columns))
+        figures = list(self.fig_wids.values())
+
+        vbox_children = list()
+        for i in range(n_rows):
+            hbox_children = list()
+            for j in range(n_columns):
+                if figures:
+                    hbox_children.append(figures.pop(0))
+
+            vbox_children.append(iw.HBox(hbox_children))
+
+        self.widget.children[1].children = vbox_children
 
     @staticmethod
     def is_timeseries(result):
@@ -490,27 +573,3 @@ class TimeSeriesPlot(Plot):
             return False
 
         return True
-
-    def update_figures(self):
-        sc_x = bq.LinearScale()
-        sc_y = bq.LinearScale()
-        self.plots = OrderedDict()
-
-        for res_name, job_dict in self.indices.items():
-            self.plots[res_name] = OrderedDict()
-            for i, job_name in enumerate(job_dict):
-                line = bq.Lines(
-                    scales={'x': sc_x, 'y': sc_y},
-                    labels=[job_name],
-                    display_legend=True,
-                    colors=[self.color_cycle[i]])
-                self.plots[res_name][job_name] = line
-
-        self.figures = OrderedDict()
-        for name in self.plots:
-            ax_x = bq.Axis(scale=sc_x, label='time', grid_lines="none")
-            ax_y = bq.Axis(scale=sc_y, orientation='vertical', label=name, grid_lines="none")
-            lines = list(self.plots[name].values())
-            self.figures[name] = bq.Figure(marks=lines, axes=[ax_x, ax_y])
-
-        self.widget.children[1].children = tuple(self.figures.values())
