@@ -9,7 +9,7 @@ except ImportError:
         "Install ipympl to use matplotlib figures as jupyter widgets.")
 
 try:
-    _ = ipympl.backend_nbagg.FigureCanvasNbAgg
+    ipympl.backend_nbagg.FigureCanvasNbAgg
 except AttributeError:
     raise AttributeError(
         "Maybe '%matplotlib widget' magic is missing in the notebook!")

@@ -531,7 +531,7 @@ class TimeSeriesPlot(Plot):
             reset_zoom_bt = iw.Button(
                 description='',
                 disabled=False,
-                tooltip='Reset zoom',
+                tooltip='reset zoom',
                 icon='arrows-alt'
             )
 
