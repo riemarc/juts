@@ -11,7 +11,7 @@ class TimeSeriesPlot(Plot):
         self.n_points = iw.BoundedIntText(
             value=0,
             min=0,
-            max=10000000,
+            max=10 ** 8,
             step=1,
             description='Number of points (0 means all):',
             style={'description_width': 'initial'})
@@ -37,7 +37,7 @@ class TimeSeriesPlot(Plot):
         if all([not job.is_alive() for job in self.jobs]):
             self.update_plot()
 
-    def update_plot(self):
+    def update_plot(self, *args, **kwargs):
         if self.result_structure_changed():
             self.update_figures()
 
@@ -181,7 +181,7 @@ class TimeSeriesPlot(Plot):
         return True
 
 
-class ReplayTimeSeriesPlot(TimeSeriesPlot):
+class TimeSeriesReplayPlot(TimeSeriesPlot):
     def __init__(self, jobs, plot_layout="tab"):
         super().__init__(jobs, plot_layout=plot_layout)
 
@@ -189,8 +189,6 @@ class ReplayTimeSeriesPlot(TimeSeriesPlot):
         self.replay_panel.time_slider.observe(
             self.on_replay_time_change, names="value")
         self.widget.children = [self.replay_panel] + list(self.widget.children)
-
-        self._block_signal = False
 
     def on_replay_time_change(self, change):
         with self.widget.hold_sync():

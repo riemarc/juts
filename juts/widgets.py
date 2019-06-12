@@ -447,7 +447,7 @@ class Plot(Thread, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def update_plot(self):
+    def update_plot(self, *args, **kwargs):
         pass
 
     def run(self):
@@ -489,7 +489,7 @@ class ReplayPanel(iw.HBox):
         self.interval = iw.BoundedIntText(
             value=100,
             min=1,
-            max=100000000,
+            max=10 ** 8,
             step=100,
             description='Interval (ms):',
             style={'description_width': 'initial'},
@@ -511,9 +511,9 @@ class ReplayPanel(iw.HBox):
         self.children = [
             iw.VBox([iw.HBox([self.time_slider, self.interval_label]),
                      iw.HBox([self.range_slider, self.interval_label])],
-                    layout=iw.Layout(width="70%")),
+                    layout=iw.Layout(width="50%")),
             iw.VBox([self.replay_widet, self.interval],
-                    layout=iw.Layout(width="30%")),
+                    layout=iw.Layout(width="50%")),
         ]
 
         self.time_min = 0
