@@ -11,13 +11,14 @@ setuptools.setup(
     version="0.1",
     author="Marcus Riesmeier",
     author_email="marcus.riesmeier@umit.com",
+    license="BSD",
     description=description,
     long_description=description,
     packages=setuptools.find_packages(),
     install_requires=requirements,
     classifiers=(
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
     ),
 )
