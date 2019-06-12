@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from abc import abstractmethod, ABCMeta
-from ..container import Plot
+from ..widgets import Plot
 
 try:
     import ipympl

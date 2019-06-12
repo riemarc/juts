@@ -1,8 +1,7 @@
 from multiprocessing import Process, Queue, Manager, cpu_count
 from yamlordereddictloader import Dumper, Loader
 from collections import OrderedDict, Mapping
-from abc import abstractmethod, ABCMeta
-from threading import Thread, Event
+from threading import Thread
 from pprint import pformat
 from numbers import Number
 from queue import Empty
@@ -345,41 +344,22 @@ class Signal(iw.ValueWidget):
             return abs(value) - 1
 
 
-class Plot(Thread, metaclass=ABCMeta):
-    def __init__(self, jobs, widget, update_cycle=0.1, timeout=2, jobs_valid=True):
-        super().__init__()
+def block_signal(meth):
+    def handle(*args, **kwargs):
+        args[0]._block_signal = True
+        res = meth(*args, **kwargs)
+        args[0]._block_signal = False
 
-        self.jobs = jobs
-        self.widget = widget
-        self.last_update = time.time()
-        self.update_cycle = update_cycle
-        self.timeout = timeout
-        self.jobs_valid = jobs_valid
-        self.update_event = Event()
+        return res
 
-        for job in jobs:
-            job.live_result_update.observe(self.on_live_result_update, names="value")
+    return handle
 
-    def on_live_result_update(self, change):
-        self.update_event.set()
 
-    @abstractmethod
-    def update_plot(self):
-        pass
+def on_unblocked_signal(meth):
+    def handle(*args, **kwargs):
+        if not args[0]._block_signal:
+            return meth(*args, **kwargs)
 
-    def run(self):
-        while any([job.job_is_alive for job in self.jobs]):
-            if self.update_event.wait(self.timeout):
-                self.update_event.clear()
-
-                cycle_margin = self.update_cycle - time.time() + self.last_update
-                self.last_update = time.time()
-                if cycle_margin > 0:
-                    time.sleep(cycle_margin)
-
-                with self.widget.hold_sync():
-                    self.update_plot()
-
-        self.update_plot()
+    return handle
 
 

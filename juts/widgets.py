@@ -1,10 +1,11 @@
-from .container import Configuration, Job, Plot
+from .container import Configuration, Job
+from abc import abstractmethod, ABCMeta
+from threading import Thread, Event
 from collections import OrderedDict
 from ast import literal_eval
-from numbers import Number
 import ipywidgets as iw
-import bqplot as bq
 import numpy as np
+import time
 
 
 class ConfigurationView(iw.Accordion):
@@ -424,172 +425,142 @@ class UserInterfaceForm(iw.Tab):
         self.set_title(1, "Visualizer")
 
 
-class TimeSeriesPlot(Plot):
-    def __init__(self, jobs, plot_layout="tab"):
-        self.n_points = iw.BoundedIntText(
+class Plot(Thread, metaclass=ABCMeta):
+    def __init__(self, jobs, widget, update_cycle=0.1, timeout=2, jobs_valid=True):
+        super().__init__()
+
+        self.jobs = jobs
+        self.widget = widget
+        self.last_update = time.time()
+        self.update_cycle = update_cycle
+        self.timeout = timeout
+        self.jobs_valid = jobs_valid
+        self.update_event = Event()
+
+        for job in jobs:
+            job.live_result_update.observe(self.on_live_result_update, names="value")
+
+    def on_live_result_update(self, change):
+        self.update_event.set()
+
+    def on_no_jobs_alive(self):
+        pass
+
+    @abstractmethod
+    def update_plot(self):
+        pass
+
+    def run(self):
+        while any([job.job_is_alive for job in self.jobs]):
+            if self.update_event.wait(self.timeout):
+                self.update_event.clear()
+
+                cycle_margin = self.update_cycle - time.time() + self.last_update
+                self.last_update = time.time()
+                if cycle_margin > 0:
+                    time.sleep(cycle_margin)
+
+                with self.widget.hold_sync():
+                    self.update_plot()
+
+        self.update_plot()
+        self.on_no_jobs_alive()
+
+
+class ReplayPanel(iw.HBox):
+    def __init__(self):
+        super().__init__()
+
+        self.range_slider = iw.IntRangeSlider(
+            value=[0, 1],
+            step=1,
+            min=0,
+            max=1,
+            continuous_update=False,
+            orientation='horizontal',
+            layout=iw.Layout(width="80%"))
+        self.replay_widet = iw.Play(
+            interval=100,
             value=0,
             min=0,
-            max=10000000,
+            max=1,
             step=1,
-            description='Number of points (0 means all):',
-            style={'description_width': 'initial'})
-        self.n_points.observe(self.on_n_points, names="value")
+            layout=iw.Layout(width="auto"))
+        self.interval = iw.BoundedIntText(
+            value=100,
+            min=1,
+            max=100000000,
+            step=100,
+            description='Interval (ms):',
+            style={'description_width': 'initial'},
+            layout=iw.Layout(width="initial"))
+        self.time_slider = iw.IntSlider(
+            min=0,
+            max=1,
+            layout=iw.Layout(width="80%"))
+        self.interval_label = iw.Label("x 1s")
 
-        self.plot_layout = plot_layout
-        if plot_layout == "tab":
-            box = iw.Tab()
-        elif plot_layout == "vbox":
-            box = iw.VBox()
-        else:
-            raise NotImplementedError
+        def on_range_change(change):
+            min_, max_ = change["new"]
+            self.replay_widet.min = min_
+            self.replay_widet.max = max_
 
-        widget = iw.VBox([self.n_points, box])
-        super().__init__(jobs, widget)
+        iw.link((self.replay_widet, 'value'), (self.time_slider, 'value'))
+        iw.link((self.interval, 'value'), (self.replay_widet, 'interval'))
+        self.range_slider.observe(on_range_change, names="value")
+        self.children = [
+            iw.VBox([iw.HBox([self.time_slider, self.interval_label]),
+                     iw.HBox([self.range_slider, self.interval_label])],
+                    layout=iw.Layout(width="70%")),
+            iw.VBox([self.replay_widet, self.interval],
+                    layout=iw.Layout(width="30%")),
+        ]
 
-        self.indices = dict()
-        self.figures = dict()
-        self.jobs = jobs
-        self.update_plot()
+        self.time_min = 0
+        self.time_max = 1
+        self.time_step = 1
+        self.time_index = iw.ValueWidget(value=0)
+        iw.link((self.replay_widet, 'value'), (self.time_index, 'value'))
 
-    def on_n_points(self, change):
-        if all([not job.is_alive() for job in self.jobs]):
-            self.update_plot()
+        self.enable_panel(False)
 
-    def update_plot(self):
-        if self.result_structure_changed():
-            self.update_figures()
+    def enable_panel(self, enable=True):
+        self.replay_widet.disabled = not enable
+        self.interval.disabled = not enable
+        self.range_slider.disabled = not enable
+        self.time_slider.disabled = not enable
 
-        for res_name, job_dict in self.indices.items():
-            x = list()
-            y = list()
-            for index in job_dict.values():
-                if "time" not in self.jobs[index].result:
-                    continue
+    def update_time_axis(self, jobs):
+        min_times = list()
+        max_times = list()
+        mean_times = list()
+        for job in jobs:
+            if "time" in job.result:
+                time = job.result["time"]
+                min_times.append(time[0])
+                max_times.append(time[-1])
+                mean_times.append(np.mean(np.diff(time)))
 
-                x.append(list(
-                    self.jobs[index].result["time"][-self.n_points.value:]))
-                y.append(list(
-                    self.jobs[index].result[res_name][-self.n_points.value:]))
+        if not min_times or not max_times:
+            return
 
-            self.figures[res_name].marks[0].x = x
-            self.figures[res_name].marks[0].y = y
+        self.time_min = min(min_times)
+        self.time_max = max(max_times)
+        self.time_step = np.mean(mean_times)
 
-    def result_structure_changed(self):
-        indices = OrderedDict()
-        for i, job in enumerate(self.jobs):
-            for res_name, res in job.result.items():
-                if res_name == "time":
-                    continue
+        if self.time_min == self.time_max or self.time_step <= 0:
+            return
 
-                is_timeseries = self.is_timeseries(res)
-                if res_name not in indices:
-                    if is_timeseries:
-                        indices[res_name] = OrderedDict()
+        T = self.time_max - self.time_min
+        N = np.ceil(T / self.time_step)
+        self.time_slider.max = N
+        self.range_slider.max = N
+        self.replay_widet.max = N
+        self.range_slider.value = (0, N)
+        self.interval_label.value = "x {:.3f} s".format(self.time_step)
+        self.replay_widet.interval = int(self.time_step * 1000)
 
-                if is_timeseries:
-                    indices[res_name][job.config.name] = i
+        self.enable_panel()
 
-        res = not indices == self.indices
-
-        if res:
-            self.indices = indices
-
-        return res
-
-    def update_figures(self):
-        self.figures = OrderedDict()
-        self.fig_wids = OrderedDict()
-        for res_name, job_dict in self.indices.items():
-            sc_x = bq.LinearScale()
-            sc_y = bq.LinearScale()
-            line = bq.Lines(
-                scales={'x': sc_x, 'y': sc_y},
-                labels=list(job_dict.keys()),
-                display_legend=True)
-            ax_x = bq.Axis(scale=sc_x, label='time')
-            ax_y = bq.Axis(scale=sc_y, orientation='vertical', label=res_name)
-            self.figures[res_name] = bq.Figure(
-                marks=[line], axes=[ax_x, ax_y], legend_location="top-right")
-
-            pz = bq.PanZoom(scales={'x': [sc_x], 'y': [sc_y]})
-            pzx = bq.PanZoom(scales={'x': [sc_x]})
-            pzy = bq.PanZoom(scales={'y': [sc_y], })
-
-            zoom_interacts = iw.ToggleButtons(
-                options=OrderedDict([
-                    ('xy ', pz),
-                    ('x ', pzx),
-                    ('y ', pzy),
-                    (' ', None)]),
-                icons=["arrows", "arrows-h", "arrows-v", "stop"],
-                tooltips=["zoom/pan in x & y", "zoom/pan in x only",
-                          "zoom/pan in y only", "cancel zoom/pan"]
-            )
-            zoom_interacts.value = None
-            zoom_interacts.style.button_width = '60px'
-
-            reset_zoom_bt = iw.Button(
-                description='',
-                disabled=False,
-                tooltip='reset zoom',
-                icon='arrows-alt'
-            )
-
-            def reset_zoom(new, fig=self.figures[res_name]):
-                fig.axes[0].scale.min = None
-                fig.axes[1].scale.min = None
-                fig.axes[0].scale.max = None
-                fig.axes[1].scale.max = None
-
-            reset_zoom_bt.on_click(reset_zoom)
-            reset_zoom_bt.layout.width = '60px'
-
-            iw.link((zoom_interacts, 'value'),
-                    (self.figures[res_name], 'interaction'))
-            fig_wid = iw.VBox([
-                self.figures[res_name],
-                iw.HBox([zoom_interacts, reset_zoom_bt])], align_self='stretch')
-            self.fig_wids[res_name] = fig_wid
-
-        self.layout_figures()
-
-    def layout_figures(self):
-        if self.plot_layout == "tab":
-            self.layout_figures_tab()
-        else:
-            self.layout_figures_vbox()
-
-    def layout_figures_tab(self):
-        self.widget.children[1].children = list(self.fig_wids.values())
-        for i, res_name in enumerate(self.fig_wids):
-            self.widget.children[1].set_title(i, res_name)
-
-    def layout_figures_vbox(self):
-        n_columns = 2
-        n_figures = len(self.figures)
-        n_rows = int(np.ceil(n_figures / n_columns))
-        figures = list(self.fig_wids.values())
-
-        vbox_children = list()
-        for i in range(n_rows):
-            hbox_children = list()
-            for j in range(n_columns):
-                if figures:
-                    hbox_children.append(figures.pop(0))
-
-            vbox_children.append(iw.HBox(hbox_children))
-
-        self.widget.children[1].children = vbox_children
-
-    @staticmethod
-    def is_timeseries(result):
-        if not hasattr(result, "__iter__"):
-            return False
-
-        if len(result) == 0:
-            return False
-
-        if not isinstance(result[0], Number):
-            return False
-
-        return True
+    def current_time(self):
+        return self.time_min + self.time_slider.value * self.time_step

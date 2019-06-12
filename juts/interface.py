@@ -1,25 +1,6 @@
-from .container import JobScheduler, Job, Configuration, load_configurations
+from .container import JobScheduler, Job, Configuration, load_configurations, block_signal, on_unblocked_signal
 from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
 import warnings
-
-
-def block_signal(meth):
-    def handle(*args, **kwargs):
-        args[0]._block_signal = True
-        res = meth(*args, **kwargs)
-        args[0]._block_signal = False
-
-        return res
-
-    return handle
-
-
-def on_unblocked_signal(meth):
-    def handle(*args, **kwargs):
-        if not args[0]._block_signal:
-            return meth(*args, **kwargs)
-
-    return handle
 
 
 class SchedulerInterface(SchedulerForm):
