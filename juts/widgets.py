@@ -1,3 +1,5 @@
+import warnings
+
 from .container import Configuration, Job
 from abc import abstractmethod, ABCMeta
 from threading import Thread, Event
@@ -86,9 +88,8 @@ class ResultView(iw.Accordion):
         result_items = list()
         for i, (key, val) in enumerate(result.items()):
             result_items.append(iw.HTML(value=str(val)))
+            self.children = tuple(result_items)
             self.set_title(i, key)
-
-        self.children = tuple(result_items)
 
 
 class JobView(iw.VBox):
