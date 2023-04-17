@@ -1,0 +1,9 @@
+wait_100_times_100_ms:
+    parameter:
+        n: 100
+        x: 0.1
+        
+wait_10_times_300_ms:
+    parameter:
+        n: 10
+        x: 0.1
