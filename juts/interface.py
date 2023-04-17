@@ -175,6 +175,7 @@ class UserInterface(UserInterfaceForm):
 
         self.scheduler.job_view.add_to_visu_bt.on_click(self.on_add_to_visu)
 
+    # TODO: rename handle -> function
     def add_config(self, handle, config=None, configfile=None):
         if config and configfile:
             raise NotImplementedError
@@ -184,6 +185,7 @@ class UserInterface(UserInterfaceForm):
 
         self.scheduler.add_config(handle, config)
 
+    # TODO: rename add_plot_widget
     def add_visualizer(self, visualizer):
         self.visualizer.add_visualizer(visualizer)
 

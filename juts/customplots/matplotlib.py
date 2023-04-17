@@ -10,7 +10,7 @@ except ImportError:
         "Install ipympl to use matplotlib figures as jupyter widgets.")
 
 try:
-    ipympl.backend_nbagg.FigureCanvasNbAgg
+    ipympl.backend_nbagg.FigureCanvasWebAggCore
 except AttributeError:
     raise AttributeError(
         "Maybe '%matplotlib widget' magic is missing in the notebook!")

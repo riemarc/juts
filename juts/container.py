@@ -1,6 +1,7 @@
 from multiprocessing import Process, Queue, Manager, cpu_count
 from yamlordereddictloader import Dumper, Loader
-from collections import OrderedDict, Mapping
+from collections import OrderedDict
+from collections.abc import Mapping
 from threading import Thread
 from pprint import pformat
 from numbers import Number
