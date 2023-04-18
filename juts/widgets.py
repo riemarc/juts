@@ -1,6 +1,6 @@
 import warnings
 
-from .container import Configuration, Job
+from .container import Configuration, Job, dump_configurations
 from abc import abstractmethod, ABCMeta
 from threading import Thread, Event
 from collections import OrderedDict
@@ -308,57 +308,94 @@ class PlotList(ItemList):
         return "{}({})".format(it.__class__.__name__, args)
 
 
-class SchedulerForm(iw.GridBox):
+class SchedulerForm(iw.VBox):
     def __init__(self):
         head_it_layout = lambda lbl: iw.Layout(width='auto', grid_area=lbl)
 
         self.load_configs_bt = iw.Button(
-            description="Load Configs", icon="open",
+            description="Load Config(s)", icon="open",
             layout=head_it_layout("load_config_button"))
         self.save_configs_bt = iw.Button(
-            description="Save Configs", icon="save",
+            description="Save Config(s)", icon="save",
             layout=head_it_layout("save_config_button"))
-        self.save_results_bt = iw.Button(
-            description="Save Results", icon="save",
-            layout=head_it_layout("save_result_button"))
+        self.delete_config_bt = iw.Button(
+            description="Delete Config", icon="delete",
+            layout=head_it_layout("delete_config_button"))
+        self.delete_func_bt = iw.Button(
+            description="Delete Function", icon="delete",
+            layout=head_it_layout("delete_func_button"))
+
+        self.config_list = ItemList(
+            "Configurations", tuple(),
+            mode="select", layout=head_it_layout("config_list"))
+        self.func_list = ItemList(
+            "Functions", tuple(),
+            mode="select", layout=head_it_layout("func_list"))
+        spacer = iw.Label(str(""), layout=head_it_layout("spacer"))
+        self.config_job_view = JobView()
+        self.config_job_view.layout = head_it_layout("config_job_view")
+
+        grid_layout = iw.Layout(
+            width='100%',
+            grid_template_rows='auto auto auto auto',
+            grid_template_columns='12% 12% 12% 12% 12% 12% 12% 12%',
+            grid_gap='0% 0.5%',
+            grid_template_areas='''
+                "func_list func_list func_list config_list config_list config_list . ."
+                "func_list func_list func_list config_list config_list config_list load_config_button load_config_button"
+                "func_list func_list func_list config_list config_list config_list save_config_button save_config_button"
+                "func_list func_list func_list config_list config_list config_list delete_config_button delete_config_button"
+                "func_list func_list func_list config_list config_list config_list delete_func_button delete_func_button"
+                "config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view"
+                ''')
+        grid_items = [self.load_configs_bt, self.save_configs_bt,
+                      self.delete_config_bt, self.delete_func_bt,
+                      self.config_list, self.func_list, self.job_view,
+                      self.config_job_view]
+        conf_grid = iw.GridBox(grid_items, layout=grid_layout)
+
         self.play_queue_bt = iw.ToggleButton(
             description="Run", icon="play",
             layout=head_it_layout("run_button"))
-
-        self.config_list = JobList(
-            "Configurations", tuple(), layout=head_it_layout("config_list"))
+        self.discard_job = iw.Button(
+            description="Discard Job", icon="delete",
+            layout=head_it_layout("discard_job_button"))
+        self.save_results_bt = iw.Button(
+            description="Save Results", icon="save",
+            layout=head_it_layout("save_result_button"))
         self.busy_list = JobList(
             "Busy", tuple(), layout=head_it_layout("busy_list"))
         self.queue_list = JobList(
             "Queue", tuple(), layout=head_it_layout("queue_list"))
         self.result_list = JobList(
             "Results", tuple(), layout=head_it_layout("result_list"))
-        self.job_list_labels = ["config", "queue", "busy", "result"]
-        self.job_lists = [self.config_list, self.queue_list,
-                          self.busy_list, self.result_list]
+        self.job_list_labels = ["queue", "busy", "result"]
+        self.job_lists = [self.queue_list, self.busy_list, self.result_list]
 
+        spacer = iw.Label(str(""), layout=head_it_layout("spacer"))
         self.job_view = JobView()
         self.job_view.layout = head_it_layout("job_view")
-        spacer = iw.Label(str(""), layout=head_it_layout("spacer"))
-
-        grid_items = [self.load_configs_bt, self.save_configs_bt,
-                      self.save_results_bt, self.play_queue_bt,
-                      self.config_list, self.busy_list, self.queue_list,
-                      self.result_list, self.job_view, spacer]
         grid_layout = iw.Layout(
                 width='100%',
-                grid_template_rows='auto auto auto auto',
+                grid_template_rows='auto auto auto auto auto auto auto',
                 grid_template_columns='24% 24% 24% 24%',
                 grid_gap='0% 1%',
                 grid_template_areas='''
-                "load_config_button save_config_button save_result_button run_button "
-                "config_list config_list queue_list queue_list "
-                "result_list result_list busy_list busy_list "
-                "spacer spacer spacer spacer "
-                "job_view job_view job_view job_view "
+                "func_list config_list load_config_button save_config_button"
+                "func_list config_list delete_config_button delete_func_button"
+                "queue_list busy_list result_list run_button"
+                "queue_list busy_list result_list discard_job_button"
+                "queue_list busy_list result_list save_result_button"
+                "spacer spacer spacer spacer"
+                "job_view job_view job_view job_view"
                 ''')
+        grid_items = [self.load_configs_bt, self.save_configs_bt,
+                      self.delete_config_bt, self.delete_func_bt,
+                      self.config_list, self.func_list, self.play_queue_bt,
+                      self.discard_job, self.save_results_bt, self.busy_list,
+                      self.queue_list, self.result_list, self.job_view, spacer]
 
-        super().__init__(grid_items, layout=grid_layout)
+        super().__init__([conf_grid])
 
 
 class VisualizerForm(iw.GridBox):
@@ -565,3 +602,40 @@ class ReplayPanel(iw.HBox):
 
     def current_time(self):
         return self.time_min + self.time_slider.value * self.time_step
+
+
+class DownloadConfigButton(iw.HBox):
+    def __init__(self, *args, **kwargs):
+        self.button = iw.Button(*args, **kwargs)
+        self.html = iw.HTML("")
+        self.hbox = iw.HBox([self.button, self.html])
+        self.download_output = iw.Output()
+
+        super().__init__([self.button, self.html])
+
+    def download_config(self, config):
+        server_filename = "download.yml"
+        dump_configurations(server_filename, config)
+        with open(server_filename, "r") as f:
+            content = f.read()
+
+        from base64 import b64encode
+        content_b64 = b64encode(content.encode()).decode()
+        remote_filename = server_filename
+        kind = "text/yaml"
+        data_url = f'data:{kind};charset=utf-8;base64,{content_b64}'
+        js_code = f"""
+            var a = document.createElement('a');
+            a.setAttribute('download', '{remote_filename}');
+            a.setAttribute('href', '{data_url}');
+            a.click()
+        """
+        from IPython.display import HTML, clear_output, display_javascript, Javascript, FileLink
+        with self.download_output:
+            clear_output()
+            display_javascript(Javascript(js_code))
+            # self.html = iw.HTML(f'<script>{js_code}</script>')
+            # self.hbox.children[1].value = f'<script>{js_code}</script>'
+            # print(f'<script>{js_code}</script>')
+            # self.description = iw.HTML(f'<script>{js_code}</script>')
+            # display(HTML(f'<script>{js_code}</script>'))

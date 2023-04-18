@@ -13,6 +13,8 @@ class SchedulerInterface(SchedulerForm):
         self.play_queue_bt.observe(self.on_play_queue, names="value")
 
         self.config_list.select.observe(self.on_config_change, names="index")
+        self.func_list.select.observe(self.on_func_change, names="index")
+
         self.queue_list.select.observe(self.on_queue_change, names="index")
         self.busy_list.select.observe(self.on_busy_change, names="index")
         self.result_list.select.observe(self.on_result_change, names="index")
@@ -35,6 +37,7 @@ class SchedulerInterface(SchedulerForm):
         pass
 
     def on_save_configs(self, change):
+        # self.save_configs_bt.download_config(self.job_view.job.config)
         pass
 
     def on_save_results(self, change):
@@ -52,8 +55,16 @@ class SchedulerInterface(SchedulerForm):
             self.job_scheduler.pause_queue()
 
     @on_unblocked_signal
+    def on_func_change(self, change):
+        self.setup_new_job(change["new"])
+
+    @on_unblocked_signal
     def on_config_change(self, change):
-        self.view_new_job(0, change["new"])
+        self.setup_new_job(change["new"])
+
+    def setup_new_job(self, item_index):
+        pass
+
 
     @on_unblocked_signal
     def on_queue_change(self, change):
