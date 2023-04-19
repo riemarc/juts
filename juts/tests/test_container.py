@@ -1,7 +1,7 @@
 from unittest import TestCase
 import juts as jt
 import time
-from juts import (Configuration, load_configurations, dump_configurations, Job)
+from juts import (Configuration, load_configs_from_file, dump_configurations, Job)
 from collections import OrderedDict
 import os
 
@@ -31,7 +31,7 @@ class TestConfiguration(TestCase):
     def test_load_dump(self):
         filename = "configs_temp_test.yml"
         dump_configurations(filename, [config])
-        self.assertEqual(settings, load_configurations(filename)[0].settings)
+        self.assertEqual(settings, load_configs_from_file(filename)[0].settings)
         os.remove(filename)
 
 

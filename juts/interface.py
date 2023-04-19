@@ -1,4 +1,4 @@
-from .container import JobScheduler, Job, Configuration, load_configurations, block_signal, on_unblocked_signal
+from .container import JobScheduler, Job, Configuration, load_configs_from_file, block_signal, on_unblocked_signal
 from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
 import warnings
 
@@ -19,9 +19,16 @@ class SchedulerInterface(SchedulerForm):
         self.busy_list.select.observe(self.on_busy_change, names="index")
         self.result_list.select.observe(self.on_result_change, names="index")
 
-        self.job_view.queue_bt.on_click(self.on_queue_bt)
+        # only config view
+        self.config_job_view.queue_bt.on_click(self.on_queue_bt)
+
+        # config + job view
+        self.config_job_view.sync_bt.on_click(self.on_sync_bt)
+        self.config_job_view.save_config_bt.on_click(self.on_save_config_bt)
         self.job_view.sync_bt.on_click(self.on_sync_bt)
         self.job_view.save_config_bt.on_click(self.on_save_config_bt)
+
+        # only job view
         self.job_view.save_result_bt.on_click(self.on_save_result_bt)
         self.job_view.discard_bt.on_click(self.on_discard_bt)
 
@@ -56,27 +63,31 @@ class SchedulerInterface(SchedulerForm):
 
     @on_unblocked_signal
     def on_func_change(self, change):
-        self.setup_new_job(change["new"])
+        self.setup_new_job()
 
     @on_unblocked_signal
     def on_config_change(self, change):
-        self.setup_new_job(change["new"])
+        self.setup_new_job()
 
-    def setup_new_job(self, item_index):
-        pass
-
+    def setup_new_job(self):
+        f_idx = self.func_list.select.index
+        c_idx = self.config_list.select.index
+        if c_idx is not None and f_idx is not None:
+            new_job = Job(self.func_list.item_list[f_idx],
+                          self.config_list.item_list[c_idx])
+            self.config_job_view.update_view(new_job, "config")
 
     @on_unblocked_signal
     def on_queue_change(self, change):
-        self.view_new_job(1, change["new"])
+        self.view_new_job(0, change["new"])
 
     @on_unblocked_signal
     def on_busy_change(self, change):
-        self.view_new_job(2, change["new"])
+        self.view_new_job(1, change["new"])
 
     @on_unblocked_signal
     def on_result_change(self, change):
-        self.view_new_job(3, change["new"])
+        self.view_new_job(2, change["new"])
 
     def view_new_job(self, list_index, item_index):
         if item_index is not None:
@@ -95,9 +106,8 @@ class SchedulerInterface(SchedulerForm):
 
     @block_signal
     def on_queue_bt(self, change):
-        assert self.job_view.source_list == "config"
-        config = self.job_view.get_config()
-        job = Job(config)
+        assert self.config_job_view.source_list == "config"
+        job = self.config_job_view.get_job()
         self.job_scheduler.append_queue_job(job)
 
     def on_save_config_bt(self, change):
@@ -112,27 +122,28 @@ class SchedulerInterface(SchedulerForm):
     @block_signal
     def on_js_sync_queue(self, change):
         self.queue_list.sync_items(list(self.job_scheduler.queue_jobs))
+        # self.update_job_view()
 
     @block_signal
     def on_js_sync_busy(self, change):
         self.busy_list.sync_items(list(self.job_scheduler.busy_jobs))
+        # self.update_job_view()
 
     @block_signal
     def on_js_sync_done(self, change):
         self.result_list.sync_items(list(self.job_scheduler.done_jobs))
+        # self.update_job_view()
 
-    @staticmethod
-    def get_jobs_from_user_input(handle, config):
-        jobs = list()
-        for key, value in config.items():
-            job_config = {key: value}
-            jobs.append(Job(Configuration(job_config, handle)))
+    # def update_job_view(self):
+    #     job_list_label = None
+    #     for i, lst in enumerate(self.job_lists):
+    #         if lst.select.index is not None:
+    #             selected_job = lst[lst.select.index]
+    #             if selected_job == self.job_view.job:
+    #                 job_list_label = self.job_list_labels[i]
+    #
+    #     self.job_view.set_mode()
 
-        return jobs
-
-    def add_config(self, handle, config):
-        jobs = self.get_jobs_from_user_input(handle, config)
-        self.config_list.append_items(jobs)
 
 
 class VisualizerInterface(VisualizerForm):
@@ -142,8 +153,8 @@ class VisualizerInterface(VisualizerForm):
         self.create_plot_bt.on_click(self.on_create_plot_bt)
         self.plot_list.select.observe(self.on_plot_change, names="index")
 
-    def add_visualizer(self, visualizer):
-        self.widget_list.append_items([visualizer])
+    def add_plot_widget(self, widget):
+        self.widget_list.append_items([widget])
 
     def on_plot_change(self, change):
         plots = [self.plot_list.item_list[i] for i in change["new"]]
@@ -185,20 +196,6 @@ class UserInterface(UserInterfaceForm):
         super().__init__(scheduler, visualizer)
 
         self.scheduler.job_view.add_to_visu_bt.on_click(self.on_add_to_visu)
-
-    # TODO: rename handle -> function
-    def add_config(self, handle, config=None, configfile=None):
-        if config and configfile:
-            raise NotImplementedError
-
-        elif configfile:
-            config = load_configurations(configfile)
-
-        self.scheduler.add_config(handle, config)
-
-    # TODO: rename add_plot_widget
-    def add_visualizer(self, visualizer):
-        self.visualizer.add_visualizer(visualizer)
 
     def on_add_to_visu(self, change):
         job_list = None

@@ -42,7 +42,7 @@ class TestInterface(TestCase):
 
         ui = jt.UserInterface()
         ui.add_config(handle=function, configfile="configurations.yml")
-        ui.add_visualizer(jt.TimeSeriesPlot)
+        ui.add_plot_widget(jt.TimeSeriesPlot)
 
     def test_time_series_plot(self):
         conf = jt.Configuration(config, function)

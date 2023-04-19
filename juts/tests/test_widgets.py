@@ -34,7 +34,7 @@ class TestWidgets(TestCase):
         print(cv.get_config("test", function))
         jt.JobView()
         jv = jt.JobView(job)
-        print(jv.get_config())
+        print(jv.get_job())
         jt.UserInterfaceForm(iw.Widget(), iw.Widget())
 
     def test_job_thread(self):
