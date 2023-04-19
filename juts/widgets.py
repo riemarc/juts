@@ -100,8 +100,8 @@ class JobView(iw.VBox):
         self.text = iw.Text(value="", disabled=True)
         self.queue_bt = iw.Button(
             description='Queue Job', icon="check")
-        self.sync_bt = iw.Button(
-            description='Sync Config', icon="sync")
+        self.pick_bt = iw.Button(
+            description='Pick Config', icon="sync")
         self.add_to_visu_bt = iw.Button(
             description='Add to Visu', icon="eye")
         self.save_config_bt = iw.Button(
@@ -141,7 +141,7 @@ class JobView(iw.VBox):
         self.source_list = source_list
         if source_list == "config":
             self.text.disabled = False
-            header = [self.text, self.queue_bt, self.sync_bt,
+            header = [self.text, self.queue_bt, self.pick_bt,
                       self.save_config_bt]
             accordion = [self.config_view]
             accordion_title = ["Configuration"]
@@ -150,7 +150,7 @@ class JobView(iw.VBox):
         # TODO: disable discard_bt on run
         elif source_list == "queue":
             self.text.disabled = True
-            header = [self.text, self.sync_bt, self.save_config_bt,
+            header = [self.text, self.pick_bt, self.save_config_bt,
                       self.discard_bt]
             accordion = [self.config_view]
             accordion_title = ["Configuration"]
@@ -158,7 +158,7 @@ class JobView(iw.VBox):
 
         elif source_list == "busy":
             self.text.disabled = True
-            header = [self.text, self.sync_bt, self.save_config_bt]
+            header = [self.text, self.pick_bt, self.save_config_bt]
             accordion = [self.config_view, self.log_view]
             accordion_title = ["Configuration", "Log"]
             self.children = [self.label, self.header_box, self.job.progress,
@@ -166,7 +166,7 @@ class JobView(iw.VBox):
 
         elif source_list == "result":
             self.text.disabled = True
-            header = [self.text, self.add_to_visu_bt, self.sync_bt,
+            header = [self.text, self.add_to_visu_bt, self.pick_bt,
                       self.save_config_bt, self.save_result_bt, self.discard_bt]
             accordion = [self.config_view, self.result_view, self.log_view]
             accordion_title = ["Configuration", "Result", "Log"]
@@ -185,9 +185,12 @@ class JobView(iw.VBox):
         for i, title in enumerate(accordion_title):
             self.accordion.set_title(i, title)
 
+    def get_config(self):
+        return self.config_view.get_config(self.text.value)
+
     def get_job(self):
         func = self.job.func
-        config = self.config_view.get_config(self.text.value)
+        config = self.get_config()
 
         return Job(func, config, name=self.text.value)
 
@@ -358,7 +361,7 @@ class SchedulerForm(iw.VBox):
             "Functions", tuple(),
             layout=head_it_layout("func_list"))
         self.config_job_view = JobView(
-            label="Editable Job: Function + Configuration")
+            label="Editable Job (Function + Configuration)")
         self.config_job_view.layout = head_it_layout("config_job_view")
 
         self.play_queue_bt = iw.ToggleButton(

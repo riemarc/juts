@@ -25,10 +25,10 @@ class SchedulerInterface(SchedulerForm):
         self.config_job_view.queue_bt.on_click(self.on_queue_bt)
 
         # config + job view
-        self.config_job_view.sync_bt.on_click(self.on_sync_bt)
-        self.config_job_view.save_config_bt.on_click(self.on_save_config_bt)
-        self.job_view.sync_bt.on_click(self.on_sync_bt)
-        self.job_view.save_config_bt.on_click(self.on_save_config_bt)
+        self.config_job_view.pick_bt.on_click(self.on_cjv_pick_bt)
+        self.config_job_view.save_config_bt.on_click(self.on_cjv_save_config_bt)
+        self.job_view.pick_bt.on_click(self.on_jv_pick_bt)
+        self.job_view.save_config_bt.on_click(self.on_jv_save_config_bt)
 
         # only job view
         self.job_view.save_result_bt.on_click(self.on_save_result_bt)
@@ -105,8 +105,11 @@ class SchedulerInterface(SchedulerForm):
             except IndexError:
                 warnings.warn("can not show job: index out of range")
 
-    def on_sync_bt(self, change):
-        pass
+    def on_cjv_pick_bt(self, change):
+        self.add_config(self.config_job_view.get_config())
+
+    def on_jv_pick_bt(self, change):
+        self.add_config(self.config_job_view.get_config())
 
     @block_signal
     def on_queue_bt(self, change):
@@ -114,8 +117,17 @@ class SchedulerInterface(SchedulerForm):
         job = self.config_job_view.get_job()
         self.job_scheduler.append_queue_job(job)
 
-    def on_save_config_bt(self, change):
-        pass
+    def on_cjv_save_config_bt(self, change):
+        self.on_save_config_bt(self.config_job_view.get_config())
+
+    def on_jv_save_config_bt(self, change):
+        self.on_save_config_bt(self.job_view.get_config())
+
+    def on_save_config_bt(self, config):
+        fn = get_filename("", "yml", post=config.name.replace(" ", "_"))
+        dump_configurations(fn, [config])
+        fl = FileLink(fn)
+        self.download_view.add_file_link(fl)
 
     def on_save_result_bt(self, change):
         pass

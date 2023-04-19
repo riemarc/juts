@@ -60,8 +60,13 @@ def load_configs_from_file(filename):
     return load_configs_from_dict(configs)
 
 
-def get_filename(type, ending):
-    return dt.now().strftime(f"%Y-%d-%m-{type}-%H-%M-%S.{ending}")
+def get_filename(fix, ending, post=""):
+    if post:
+        return dt.now().strftime(
+            f"%Y-%d-%m-{fix}-%H-%M-%S--{post}.{ending}")
+    else:
+        return dt.now().strftime(
+            f"%Y-%d-%m-{fix}-%H-%M-%S.{ending}")
 
 
 def load_configs_from_dict(configs):
