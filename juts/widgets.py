@@ -38,8 +38,8 @@ class ConfigurationView(iw.Accordion):
         for i, key in enumerate(config.settings):
             self.set_title(i, key)
 
-    def get_config(self, name):
-        config = OrderedDict()
+    def get_config(self, job_name):
+        settings = OrderedDict()
         for i, param_set in enumerate(self.children):
 
             key = self.get_title(i)
@@ -63,11 +63,14 @@ class ConfigurationView(iw.Accordion):
 
                 value.update({param.description: text_value})
 
-            config.update({key: value})
+            settings.update({key: value})
 
-        self.config = Configuration(name, config)
+        if " + " in job_name:
+            config_name = "".join(job_name.split(" + ")[1:])
+        else:
+            config_name = self.config.name
 
-        return self.config
+        return Configuration(config_name, settings)
 
 
 class ResultView(iw.Accordion):
@@ -186,7 +189,7 @@ class JobView(iw.VBox):
         func = self.job.func
         config = self.config_view.get_config(self.text.value)
 
-        return Job(func, config)
+        return Job(func, config, name=self.text.value)
 
 
 # class DownloadView(iw.VBox):
@@ -273,9 +276,9 @@ class ItemList(iw.VBox):
 
         return item
 
-    def sync_items(self, jobs):
-        self.item_list = jobs
-        self.select.options = tuple([it.config.name for it in jobs])
+    def sync_items(self, items):
+        self.item_list = items
+        self.select.options = tuple([self.get_item_str(it) for it in items])
 
         if isinstance(self.select, iw.Select):
             self.select.index = None
@@ -296,10 +299,6 @@ class JobList(ItemList):
     def __init__(self, label, jobs, **kwargs):
         super().__init__(label, jobs, "select", **kwargs)
 
-    @staticmethod
-    def get_item_str(it):
-        return it.config.name
-
 
 class VisuJobList(ItemList):
     def __init__(self, label, jobs, **kwargs):
@@ -307,7 +306,7 @@ class VisuJobList(ItemList):
 
     @staticmethod
     def get_item_str(it):
-        return it.config.name
+        return it.name
 
 
 class PlotWidgetList(ItemList):
@@ -325,7 +324,7 @@ class PlotList(ItemList):
 
     @staticmethod
     def get_item_str(it):
-        args = ", ".join([job.config.name for job in it.jobs])
+        args = ", ".join([job.name for job in it.jobs])
 
         return "{}({})".format(it.__class__.__name__, args)
 

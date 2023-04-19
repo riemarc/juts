@@ -122,27 +122,27 @@ class SchedulerInterface(SchedulerForm):
     @block_signal
     def on_js_sync_queue(self, change):
         self.queue_list.sync_items(list(self.job_scheduler.queue_jobs))
-        # self.update_job_view()
+        self.update_job_view()
 
     @block_signal
     def on_js_sync_busy(self, change):
         self.busy_list.sync_items(list(self.job_scheduler.busy_jobs))
-        # self.update_job_view()
+        self.update_job_view()
 
     @block_signal
     def on_js_sync_done(self, change):
         self.result_list.sync_items(list(self.job_scheduler.done_jobs))
-        # self.update_job_view()
+        self.update_job_view()
 
-    # def update_job_view(self):
-    #     job_list_label = None
-    #     for i, lst in enumerate(self.job_lists):
-    #         if lst.select.index is not None:
-    #             selected_job = lst[lst.select.index]
-    #             if selected_job == self.job_view.job:
-    #                 job_list_label = self.job_list_labels[i]
-    #
-    #     self.job_view.set_mode()
+    def update_job_view(self):
+        job_list_label = None
+        for i, lst in enumerate(self.job_lists):
+            if lst.select.index is not None:
+                self.job_view.update_view(lst.item_list[lst.select.index],
+                                          self.job_list_labels[i])
+                return
+
+        self.job_view.set_mode(job_list_label)
 
 
 

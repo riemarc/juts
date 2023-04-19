@@ -90,7 +90,7 @@ log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 class Job(Thread):
     job_count = 0
 
-    def __init__(self, func, config):
+    def __init__(self, func, config, name=None):
         self.job_index = Job.job_count
         Job.job_count += 1
         # since self.is_alive() returns False before self.start()
@@ -102,6 +102,11 @@ class Job(Thread):
 
         assert isinstance(config, Configuration)
         self._config = config
+
+        if name is None:
+            self.name = " + ".join([func.__name__, config.name])
+        else:
+            self.name = name
 
         self._result = Result()
 

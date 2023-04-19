@@ -69,7 +69,7 @@ class TimeSeriesPlot(Plot):
                         indices[res_name] = OrderedDict()
 
                 if is_timeseries:
-                    indices[res_name][job.config.name] = i
+                    indices[res_name][job.name] = i
 
         res = not indices == self.indices
 
