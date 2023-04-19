@@ -192,10 +192,15 @@ class JobView(iw.VBox):
         return Job(func, config, name=self.text.value)
 
 
-# class DownloadView(iw.VBox):
-#     def __init__(self):
-#         self.label = iw.Label("Saved Files for Download")
-#         self.view = iw.
+class DownloadView(iw.VBox):
+    def __init__(self):
+        self.label = iw.Label("Saved Files for Download")
+        # self.output = iw.Output(layout={'border': '1px solid black'})
+        self.output = iw.Output()
+        super().__init__([self.label, self.output])
+
+    def add_file_link(self, link):
+        self.output.append_display_data(link)
 
 
 class PlotView(iw.VBox):
@@ -377,10 +382,13 @@ class SchedulerForm(iw.VBox):
         self.job_view = JobView()
         self.job_view.layout = head_it_layout("job_view")
 
+        self.download_view = DownloadView()
+        self.download_view.layout = head_it_layout("download_view")
+
         grid_layout = iw.Layout(
             width='100%',
-            grid_template_rows='auto auto auto auto auto auto auto auto auto auto auto',
-            grid_template_columns='12% 12% 12% 12% 12% 12% 12% 12%',
+            grid_template_rows=" ".join(["auto"]*12),
+            grid_template_columns=" ".join(["12%"]*8),
             grid_gap='0% 0.5%',
             grid_template_areas='''
                 "func_list func_list func_list config_list config_list config_list . ."
@@ -394,6 +402,7 @@ class SchedulerForm(iw.VBox):
                 "queue_list queue_list busy_list busy_list result_list result_list discard_job_button discard_job_button"
                 "queue_list queue_list busy_list busy_list result_list result_list save_result_button save_result_button"
                 "job_view job_view job_view job_view job_view job_view job_view job_view"
+                "download_view download_view download_view download_view download_view download_view download_view download_view "
                 ''')
         grid_items = [self.load_configs_bt, self.save_configs_bt,
                       self.delete_config_bt, self.delete_func_bt,
@@ -402,7 +411,8 @@ class SchedulerForm(iw.VBox):
                       self.delete_config_bt, self.delete_func_bt,
                       self.config_list, self.func_list, self.play_queue_bt,
                       self.discard_job, self.save_results_bt, self.busy_list,
-                      self.queue_list, self.result_list, self.job_view]
+                      self.queue_list, self.result_list, self.job_view,
+                      self.download_view]
         conf_grid = iw.GridBox(grid_items, layout=grid_layout)
 
         super().__init__([conf_grid])

@@ -1,5 +1,7 @@
-from .container import JobScheduler, Job, Configuration, load_configs_from_file, block_signal, on_unblocked_signal
+from .container import JobScheduler, Job, Configuration, load_configs_from_file, \
+    block_signal, on_unblocked_signal, dump_configurations, get_filename
 from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
+from IPython.display import FileLink
 import warnings
 
 
@@ -44,8 +46,10 @@ class SchedulerInterface(SchedulerForm):
         pass
 
     def on_save_configs(self, change):
-        # self.save_configs_bt.download_config(self.job_view.job.config)
-        pass
+        fn = get_filename("configs", "yml")
+        dump_configurations(fn, self.config_list.item_list)
+        fl = FileLink(fn)
+        self.download_view.add_file_link(fl)
 
     def on_save_results(self, change):
         pass

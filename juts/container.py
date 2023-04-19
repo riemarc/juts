@@ -1,5 +1,6 @@
 from multiprocessing import Process, Queue, Manager, cpu_count
 from yamlordereddictloader import Dumper, Loader
+from datetime import datetime as dt
 from collections import OrderedDict
 from collections.abc import Mapping
 from threading import Thread
@@ -57,6 +58,10 @@ def load_configs_from_file(filename):
         configs = yaml.load(f, Loader=Loader)
 
     return load_configs_from_dict(configs)
+
+
+def get_filename(type, ending):
+    return dt.now().strftime(f"%Y-%d-%m-{type}-%H-%M-%S.{ending}")
 
 
 def load_configs_from_dict(configs):
