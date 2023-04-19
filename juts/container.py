@@ -12,105 +12,64 @@ import time
 import yaml
 
 
-class Configuration(OrderedDict):
-    def __init__(self, config, handle=None):
-
-        if isinstance(config, Configuration):
-            assert handle is None
-
-            self.name = config.name
-            self.handle = config.handle
-            super().__init__(config)
-
-        else:
-            assert callable(handle)
-
-            ord_dict = Configuration.as_ordered_dict(config)
-            ord_config = [value for value in ord_dict.values()][0]
-            self.name = [key for key in ord_dict.keys()][0]
-            self.handle = handle
-
-            super().__init__(ord_config)
+class Configuration:
+    def __init__(self, name, settings):
+        self.name = name
+        Configuration.validate_settings(settings)
+        self.settings = settings
 
     def __repr__(self, *args, **kwargs):
         prt = ("Name: {}\n"
-               "Function: {}\n"
-               "Configuration:\n{}").format(
+               "Settings:\n{}").format(
             self.name,
-            self.handle,
-            pformat(list(self.items())))
+            pformat(list(self.settings.items())))
 
         return prt
 
     @staticmethod
-    def as_ordered_dict(config):
-        if not isinstance(config, Mapping):
-            raise TypeError(
-                "Use collection.OrderedDict for configuration specification\n"
-                "or provide filename to yaml file.")
-
-        if len(config) == 0:
-            raise ValueError(
-                "Empty configuration dictionary/file provided.")
-
-        if len(config) > 1:
-            raise ValueError(
-                "Loading configuration from dictionary/file needs a \n"
-                "dictionary/file with only one configuration. Use \n"
-                "load_configurations() for multiple configurations.")
-
-        config_name = [key for key in config.keys()][0]
-        inter_config = OrderedDict([value for value in config.values()][0])
-
-        settings = dict()
-        configuration = OrderedDict()
-        for key, value in inter_config.items():
-            if not isinstance(value, Mapping):
+    def validate_settings(settings):
+        for _name, parameters in settings.items():
+            if not isinstance(parameters, Mapping):
                 raise TypeError(
-                    "Only depth-2 configurations allowed.")
-
-            configuration.update({key: OrderedDict(value)})
-            settings.update(value)
-
-        for key, value in settings.items():
-            if not Configuration.is_valid_setting(value):
-                raise ValueError(
-                    "A valid setting is a number, string or list, but not\n"
-                    "{}: {}".format(key, value))
-
-        return OrderedDict({config_name: configuration})
+                    "Only depth-2 configurations supported.")
+            for __name, parameter in parameters.items():
+                if not Configuration.is_valid_parameter(parameter):
+                    raise ValueError(
+                        "A valid parameter is a number, string or list, \\"
+                        "but not {}: {}".format(__name, parameter))
 
     @staticmethod
-    def is_valid_setting(setting):
-        if isinstance(setting, (str, Number)):
+    def is_valid_parameter(parameter):
+        if isinstance(parameter, (str, Number)):
             return True
 
-        if not isinstance(setting, list):
+        if not isinstance(parameter, list):
             return False
 
-        return all([Configuration.is_valid_setting(st) for st in setting])
+        return all([Configuration.is_valid_parameter(par) for par in parameter])
 
 
 def load_configurations(filename):
     with open(filename, "r") as f:
-        configs = yaml.load(f, Loader=Loader)
+        _configs = yaml.load(f, Loader=Loader)
 
-    valid_configs = OrderedDict()
-    for key, value in configs.items():
-        valid_configs.update(Configuration.as_ordered_dict({key: value}))
+    configs = list()
+    for name, setting in _configs.items():
+        configs.append(Configuration(name, setting))
 
-    return valid_configs
+    return configs
 
 
 Dumper.ignore_aliases = lambda *args : True
 
 
-def dump_configurations(filename, config):
-    if isinstance(config, Configuration):
-        config = OrderedDict({config.name: config})
+def dump_configurations(filename, configs):
+    _configs = dict()
+    for config in configs:
+        _configs.update({config.name: config.settings})
 
     with open(filename, "w") as f:
-        yaml.dump(config, f, Dumper=Dumper, default_flow_style=False)
+        yaml.dump(_configs, f, Dumper=Dumper, default_flow_style=False)
 
 
 class Result(OrderedDict):
