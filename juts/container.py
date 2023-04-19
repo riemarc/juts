@@ -26,6 +26,9 @@ class Configuration:
 
         return prt
 
+    def __getitem__(self, item):
+        return self.settings[item]
+
     @staticmethod
     def validate_settings(settings):
         for _name, parameters in settings.items():
@@ -49,15 +52,15 @@ class Configuration:
         return all([Configuration.is_valid_parameter(par) for par in parameter])
 
 
-def load_configurations(filename):
+def load_configs_from_file(filename):
     with open(filename, "r") as f:
-        _configs = yaml.load(f, Loader=Loader)
+        configs = yaml.load(f, Loader=Loader)
 
-    configs = list()
-    for name, setting in _configs.items():
-        configs.append(Configuration(name, setting))
+    return load_configs_from_dict(configs)
 
-    return configs
+
+def load_configs_from_dict(configs):
+    return [Configuration(name, setting) for name, setting in configs.items()]
 
 
 Dumper.ignore_aliases = lambda *args : True
@@ -87,12 +90,15 @@ log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 class Job(Thread):
     job_count = 0
 
-    def __init__(self, config):
+    def __init__(self, func, config):
         self.job_index = Job.job_count
         Job.job_count += 1
         # since self.is_alive() returns False before self.start()
         self.job_is_alive = True
         super().__init__()
+
+        assert callable(func)
+        self._func = func
 
         assert isinstance(config, Configuration)
         self._config = config
@@ -118,6 +124,11 @@ class Job(Thread):
         self.logger.addHandler(self.log_handler)
 
         self._live_result = Result()
+
+    def get_func(self):
+        return self._func
+
+    func = property(get_func)
 
     def get_config(self):
         return self._config
@@ -160,7 +171,7 @@ class Job(Thread):
         manager = Manager()
         return_dict = manager.dict()
         self.logger.info("initialize process")
-        process = Process(target=self.config.handle,
+        process = Process(target=self.func,
                           args=(self.config,),
                           kwargs=dict(return_dict=return_dict,
                                       process_queue=process_queue))
