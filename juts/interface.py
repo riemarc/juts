@@ -68,7 +68,10 @@ class SchedulerInterface(SchedulerForm):
             return
 
         fn = get_filename("configs", "yml")
-        dump_configurations(fn, self.config_list.item_list)
+        self.dump_configs(fn, self.config_list.item_list)
+
+    def dump_configs(self, fn, configs):
+        dump_configurations(fn, configs)
         fl = FileLink(fn)
         self.download_view.add_file_link(fl)
 
@@ -175,9 +178,7 @@ class SchedulerInterface(SchedulerForm):
 
     def on_save_config_bt(self, config):
         fn = get_filename("", "yml", post=config.name.replace(" ", "_"))
-        dump_configurations(fn, [config])
-        fl = FileLink(fn)
-        self.download_view.add_file_link(fl)
+        self.dump_configs(fn, [config])
 
     def on_save_result_bt(self, change):
         if not self.job_view.results_empty:
