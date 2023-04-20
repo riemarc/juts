@@ -1,7 +1,10 @@
-from .container import JobScheduler, Job, Configuration, load_configs_from_file, \
-    block_signal, on_unblocked_signal, dump_configurations, get_filename
+from .container import JobScheduler, Job, Configuration, \
+    load_configs_from_file, block_signal, on_unblocked_signal, \
+    dump_configurations, get_filename, \
+    load_configs_from_file_upload
 from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
 from IPython.display import FileLink
+import ipywidgets as iw
 import warnings
 
 
@@ -9,11 +12,13 @@ class SchedulerInterface(SchedulerForm):
     def __init__(self):
         super().__init__()
 
-        self.load_configs_bt.on_click(self.on_load_configs)
+        self.load_configs_bt.observe(self.on_load_configs, names="value")
         self.save_configs_bt.on_click(self.on_save_configs)
         self.save_results_bt.on_click(self.on_save_results)
         self.discard_func_bt.on_click(self.on_discard_func)
         self.discard_func_bt.disabled = True
+        iw.dlink((self.discard_config_bt, "disabled"),
+                 (self.save_configs_bt, "disabled"))
         self.discard_config_bt.on_click(self.on_discard_config)
         self.discard_config_bt.disabled = True
 
@@ -49,7 +54,8 @@ class SchedulerInterface(SchedulerForm):
         self._block_signal = False
 
     def on_load_configs(self, change):
-        pass
+        configs = load_configs_from_file_upload(self.load_configs_bt)
+        self.add_configs(configs)
 
     def on_save_configs(self, change):
         if len(self.config_list.item_list) == 0:

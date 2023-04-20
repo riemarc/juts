@@ -363,8 +363,8 @@ class SchedulerForm(iw.VBox):
     def __init__(self):
         head_it_layout = lambda lbl: iw.Layout(width='auto', grid_area=lbl)
 
-        self.load_configs_bt = iw.Button(
-            description="Load Config(s)", icon="upload",
+        self.load_configs_bt = iw.FileUpload(
+            description="Load Config(s)", icon="upload", multiple=True,
             layout=head_it_layout("load_config_button"))
         self.save_configs_bt = iw.Button(
             description="Save Config(s)", icon="save",
@@ -421,8 +421,8 @@ class SchedulerForm(iw.VBox):
                 "func_list func_list func_list config_list config_list config_list . ."
                 "func_list func_list func_list config_list config_list config_list load_config_button load_config_button"
                 "func_list func_list func_list config_list config_list config_list save_config_button save_config_button"
-                "func_list func_list func_list config_list config_list config_list delete_func_button delete_func_button"
                 "func_list func_list func_list config_list config_list config_list delete_config_button delete_config_button"
+                "func_list func_list func_list config_list config_list config_list delete_func_button delete_func_button"
                 "config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view"
                 "queue_list queue_list busy_list busy_list result_list result_list . ."
                 "queue_list queue_list busy_list busy_list result_list result_list run_button run_button"

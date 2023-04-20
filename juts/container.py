@@ -6,11 +6,13 @@ from collections.abc import Mapping
 from threading import Thread
 from pprint import pformat
 from numbers import Number
+from codecs import decode
 from queue import Empty
 import ipywidgets as iw
 import logging
 import time
 import yaml
+import io
 
 
 class Configuration:
@@ -59,6 +61,19 @@ def load_configs_from_file(filename):
 
     return load_configs_from_dict(configs)
 
+def load_configs_from_file_upload(file_upload):
+    configs = list()
+    for file in file_upload.value:
+        stream = io.StringIO(decode(file.content))
+        config = yaml.load(stream, Loader=Loader)
+        configs += load_configs_from_dict(config)
+
+    return configs
+
+
+def load_configs_from_dict(configs):
+    return [Configuration(name, setting) for name, setting in configs.items()]
+
 
 def get_filename(fix, ending, post=""):
     if post:
@@ -67,10 +82,6 @@ def get_filename(fix, ending, post=""):
     else:
         return dt.now().strftime(
             f"%Y-%d-%m-{fix}-%H-%M-%S.{ending}")
-
-
-def load_configs_from_dict(configs):
-    return [Configuration(name, setting) for name, setting in configs.items()]
 
 
 Dumper.ignore_aliases = lambda *args : True
