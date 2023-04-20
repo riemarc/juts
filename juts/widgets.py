@@ -95,7 +95,7 @@ class ResultView(iw.Accordion):
 
 
 class JobView(iw.VBox):
-    def __init__(self, job=None, source_list="config", label="Job View"):
+    def __init__(self, source_list="config", label="Job View"):
         self.label = iw.Label(label)
         self.text = iw.Text(value="", disabled=True)
         self.queue_bt = iw.Button(
@@ -108,9 +108,11 @@ class JobView(iw.VBox):
             description='Save Config', icon="save")
         self.save_result_bt = iw.Button(
             description='Save Result', icon="save")
-        self.discard_bt = iw.Button(
-            description='Discard Job', icon="remove")
+        # self.discard_bt = iw.Button(
+        #     description='Discard Job', icon="remove")
         self.header_box = iw.HBox(children=[])
+        self.buttons = [self.text, self.queue_bt, self.add_to_visu_bt,
+                        self.pick_bt, self.save_config_bt, self.save_result_bt]
 
         self.text.value = str()
         self.config_view = ConfigurationView()
@@ -119,12 +121,10 @@ class JobView(iw.VBox):
         self.accordion = iw.Accordion()
 
         self.source_list = source_list
+        self.view_empty = True
+        self.results_empty = True
 
         super().__init__(children=[])
-
-        if job is not None:
-            assert isinstance(job, Job)
-            self.update_view(job, self.source_list)
 
     def update_view(self, job, source_list):
         self.job = job
@@ -137,28 +137,39 @@ class JobView(iw.VBox):
 
         self.set_mode(source_list)
 
-    def set_mode(self, source_list):
+    def set_mode(self, source_list, empty=False):
         self.source_list = source_list
+        self.view_empty = empty
+        self.results_empty = True
+
+        for bt in self.buttons:
+            bt.disabled = empty
+
         if source_list == "config":
-            self.text.disabled = False
             header = [self.text, self.queue_bt, self.pick_bt,
                       self.save_config_bt]
+            self.text.disabled = False
             accordion = [self.config_view]
             accordion_title = ["Configuration"]
             self.children = [self.label, self.header_box, self.accordion]
 
         # TODO: disable discard_bt on run
         elif source_list == "queue":
+            header = [self.text, self.add_to_visu_bt, self.pick_bt,
+                      self.save_config_bt, self.save_result_bt]
             self.text.disabled = True
-            header = [self.text, self.pick_bt, self.save_config_bt,
-                      self.discard_bt]
+            self.add_to_visu_bt.disabled = True
+            self.save_result_bt.disabled = True
             accordion = [self.config_view]
             accordion_title = ["Configuration"]
             self.children = [self.label, self.header_box, self.accordion]
 
         elif source_list == "busy":
+            header = [self.text, self.add_to_visu_bt, self.pick_bt,
+                      self.save_config_bt, self.save_result_bt]
             self.text.disabled = True
-            header = [self.text, self.pick_bt, self.save_config_bt]
+            self.add_to_visu_bt.disabled = True
+            self.save_result_bt.disabled = True
             accordion = [self.config_view, self.log_view]
             accordion_title = ["Configuration", "Log"]
             self.children = [self.label, self.header_box, self.job.progress,
@@ -167,11 +178,12 @@ class JobView(iw.VBox):
         elif source_list == "result":
             self.text.disabled = True
             header = [self.text, self.add_to_visu_bt, self.pick_bt,
-                      self.save_config_bt, self.save_result_bt, self.discard_bt]
+                      self.save_config_bt, self.save_result_bt]
             accordion = [self.config_view, self.result_view, self.log_view]
             accordion_title = ["Configuration", "Result", "Log"]
-            self.children = [self.label, self.header_box, self.job.progress,
+            self.children = [self.label, self.header_box,
                              self.accordion]
+            self.results_empty = False
 
         else:
             header = []
@@ -179,8 +191,13 @@ class JobView(iw.VBox):
             accordion_title = []
             self.children = []
 
-        self.header_box.children = tuple(header)
+        if empty:
+            accordion = []
+            accordion_title = []
+            self.text.value = "no job selected"
+            self.text.disabled = True
 
+        self.header_box.children = tuple(header)
         self.accordion.children = tuple(accordion)
         for i, title in enumerate(accordion_title):
             self.accordion.set_title(i, title)
@@ -197,12 +214,14 @@ class JobView(iw.VBox):
 
 class DownloadView(iw.VBox):
     def __init__(self):
-        self.label = iw.Label("Saved Files for Download")
-        # self.output = iw.Output(layout={'border': '1px solid black'})
+        self.label = iw.Label("Saved Files")
         self.output = iw.Output()
-        super().__init__([self.label, self.output])
+        super().__init__([])
 
     def add_file_link(self, link):
+        if len(self.children) == 0:
+            self.children = (self.label, self.output)
+
         self.output.append_display_data(link)
 
 
@@ -268,8 +287,11 @@ class ItemList(iw.VBox):
             self.select.index = tuple()
 
     def pop_item(self, index=None):
-        if not index:
+        if index is None:
             index = self.select.index
+
+        if index is None:
+            return
 
         item = self.item_list[index]
         self.item_list = [
@@ -342,16 +364,16 @@ class SchedulerForm(iw.VBox):
         head_it_layout = lambda lbl: iw.Layout(width='auto', grid_area=lbl)
 
         self.load_configs_bt = iw.Button(
-            description="Load Config(s)", icon="open",
+            description="Load Config(s)", icon="upload",
             layout=head_it_layout("load_config_button"))
         self.save_configs_bt = iw.Button(
             description="Save Config(s)", icon="save",
             layout=head_it_layout("save_config_button"))
-        self.delete_config_bt = iw.Button(
-            description="Delete Config", icon="delete",
+        self.discard_config_bt = iw.Button(
+            description="Discard Config", icon="remove",
             layout=head_it_layout("delete_config_button"))
-        self.delete_func_bt = iw.Button(
-            description="Delete Function", icon="delete",
+        self.discard_func_bt = iw.Button(
+            description="Discard Function", icon="remove",
             layout=head_it_layout("delete_func_button"))
 
         self.config_list = ItemList(
@@ -363,12 +385,13 @@ class SchedulerForm(iw.VBox):
         self.config_job_view = JobView(
             label="Editable Job (Function + Configuration)")
         self.config_job_view.layout = head_it_layout("config_job_view")
+        self.config_job_view.set_mode("config", empty=True)
 
         self.play_queue_bt = iw.ToggleButton(
             description="Run", icon="play",
             layout=head_it_layout("run_button"))
-        self.discard_job = iw.Button(
-            description="Discard Job", icon="delete",
+        self.discard_job_bt = iw.Button(
+            description="Discard Job", icon="remove",
             layout=head_it_layout("discard_job_button"))
         self.save_results_bt = iw.Button(
             description="Save Results", icon="save",
@@ -384,6 +407,7 @@ class SchedulerForm(iw.VBox):
 
         self.job_view = JobView()
         self.job_view.layout = head_it_layout("job_view")
+        self.job_view.set_mode("queue", empty=True)
 
         self.download_view = DownloadView()
         self.download_view.layout = head_it_layout("download_view")
@@ -397,25 +421,22 @@ class SchedulerForm(iw.VBox):
                 "func_list func_list func_list config_list config_list config_list . ."
                 "func_list func_list func_list config_list config_list config_list load_config_button load_config_button"
                 "func_list func_list func_list config_list config_list config_list save_config_button save_config_button"
-                "func_list func_list func_list config_list config_list config_list delete_config_button delete_config_button"
                 "func_list func_list func_list config_list config_list config_list delete_func_button delete_func_button"
+                "func_list func_list func_list config_list config_list config_list delete_config_button delete_config_button"
                 "config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view"
                 "queue_list queue_list busy_list busy_list result_list result_list . ."
                 "queue_list queue_list busy_list busy_list result_list result_list run_button run_button"
-                "queue_list queue_list busy_list busy_list result_list result_list discard_job_button discard_job_button"
                 "queue_list queue_list busy_list busy_list result_list result_list save_result_button save_result_button"
+                "queue_list queue_list busy_list busy_list result_list result_list discard_job_button discard_job_button"
                 "job_view job_view job_view job_view job_view job_view job_view job_view"
                 "download_view download_view download_view download_view download_view download_view download_view download_view "
                 ''')
         grid_items = [self.load_configs_bt, self.save_configs_bt,
-                      self.delete_config_bt, self.delete_func_bt,
+                      self.discard_config_bt, self.discard_func_bt,
                       self.config_list, self.func_list, self.config_job_view,
-                      self.load_configs_bt, self.save_configs_bt,
-                      self.delete_config_bt, self.delete_func_bt,
-                      self.config_list, self.func_list, self.play_queue_bt,
-                      self.discard_job, self.save_results_bt, self.busy_list,
-                      self.queue_list, self.result_list, self.job_view,
-                      self.download_view]
+                      self.play_queue_bt, self.discard_job_bt,
+                      self.save_results_bt, self.busy_list, self.queue_list,
+                      self.result_list, self.job_view, self.download_view]
         conf_grid = iw.GridBox(grid_items, layout=grid_layout)
 
         super().__init__([conf_grid])

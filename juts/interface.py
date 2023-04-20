@@ -12,7 +12,14 @@ class SchedulerInterface(SchedulerForm):
         self.load_configs_bt.on_click(self.on_load_configs)
         self.save_configs_bt.on_click(self.on_save_configs)
         self.save_results_bt.on_click(self.on_save_results)
+        self.discard_func_bt.on_click(self.on_discard_func)
+        self.discard_func_bt.disabled = True
+        self.discard_config_bt.on_click(self.on_discard_config)
+        self.discard_config_bt.disabled = True
+
         self.play_queue_bt.observe(self.on_play_queue, names="value")
+        self.discard_job_bt.on_click(self.on_discard_job_bt)
+        self.discard_job_bt.disabled = True
 
         self.config_list.select.observe(self.on_config_change, names="index")
         self.func_list.select.observe(self.on_func_change, names="index")
@@ -32,7 +39,6 @@ class SchedulerInterface(SchedulerForm):
 
         # only job view
         self.job_view.save_result_bt.on_click(self.on_save_result_bt)
-        self.job_view.discard_bt.on_click(self.on_discard_bt)
 
         self.job_scheduler = JobScheduler()
         self.job_scheduler.start()
@@ -46,6 +52,9 @@ class SchedulerInterface(SchedulerForm):
         pass
 
     def on_save_configs(self, change):
+        if len(self.config_list.item_list) == 0:
+            return
+
         fn = get_filename("configs", "yml")
         dump_configurations(fn, self.config_list.item_list)
         fl = FileLink(fn)
@@ -53,6 +62,14 @@ class SchedulerInterface(SchedulerForm):
 
     def on_save_results(self, change):
         pass
+
+    def on_discard_func(self, change):
+        self.func_list.pop_item()
+        self.setup_new_job()
+
+    def on_discard_config(self, change):
+        self.config_list.pop_item()
+        self.setup_new_job()
 
     def on_play_queue(self, change):
         if change["new"]:
@@ -65,13 +82,25 @@ class SchedulerInterface(SchedulerForm):
             self.play_queue_bt.icon = "play"
             self.job_scheduler.pause_queue()
 
+    def on_discard_job_bt(self, change):
+        for i, lst in enumerate(self.job_lists):
+            if lst.select.index is not None:
+                if i == 0 and not self.job_scheduler.is_running:
+                    self.job_scheduler.queue_jobs.pop(lst.select.index)
+                    self.on_js_sync_queue(None)
+                elif i == 2:
+                    self.job_scheduler.done_jobs.pop(lst.select.index)
+                    self.on_js_sync_done(None)
+
     @on_unblocked_signal
     def on_func_change(self, change):
         self.setup_new_job()
+        self.discard_func_bt.disabled = change["new"] is None
 
     @on_unblocked_signal
     def on_config_change(self, change):
         self.setup_new_job()
+        self.discard_config_bt.disabled = change["new"] is None
 
     def setup_new_job(self):
         f_idx = self.func_list.select.index
@@ -80,6 +109,8 @@ class SchedulerInterface(SchedulerForm):
             new_job = Job(self.func_list.item_list[f_idx],
                           self.config_list.item_list[c_idx])
             self.config_job_view.update_view(new_job, "config")
+        else:
+            self.config_job_view.set_mode("config", empty=True)
 
     @on_unblocked_signal
     def on_queue_change(self, change):
@@ -94,22 +125,41 @@ class SchedulerInterface(SchedulerForm):
         self.view_new_job(2, change["new"])
 
     def view_new_job(self, list_index, item_index):
-        if item_index is not None:
-            for i, lst in enumerate(self.job_lists):
-                if i != list_index:
-                    lst.select.index = None
-            try:
-                new_job = self.job_lists[list_index].item_list[item_index]
-                self.job_view.update_view(new_job, self.job_list_labels[list_index])
+        if item_index is None:
+            return
 
-            except IndexError:
-                warnings.warn("can not show job: index out of range")
+        for i, lst in enumerate(self.job_lists):
+            if i != list_index:
+                lst.select.index = None
+
+        try:
+            new_job = self.job_lists[list_index].item_list[item_index]
+            self.job_view.update_view(new_job, self.job_list_labels[list_index])
+        except IndexError:
+            warnings.warn("Can not show job: index out of range!")
+
+        self.control_dicard_job_bt()
+
+    def control_dicard_job_bt(self):
+        if not hasattr(self.job_view, "job"):
+            return
+
+        if self.job_view.job in self.queue_list.item_list:
+            self.discard_job_bt.disabled = self.job_scheduler.is_running
+        elif self.job_view.job in self.busy_list.item_list:
+            self.discard_job_bt.disabled = True
+        elif self.job_view.job in self.result_list.item_list:
+            self.discard_job_bt.disabled = False
+        elif all([lst.select.index is None for lst in self.job_lists]):
+            self.discard_job_bt.disabled = True
+        else:
+            warnings.warn("Something went wrong!")
 
     def on_cjv_pick_bt(self, change):
         self.add_config(self.config_job_view.get_config())
 
     def on_jv_pick_bt(self, change):
-        self.add_config(self.config_job_view.get_config())
+        self.add_config(self.job_view.get_config())
 
     @block_signal
     def on_queue_bt(self, change):
@@ -130,10 +180,8 @@ class SchedulerInterface(SchedulerForm):
         self.download_view.add_file_link(fl)
 
     def on_save_result_bt(self, change):
-        pass
-
-    def on_discard_bt(self, change):
-        pass
+        if not self.job_view.results_empty:
+            pass
 
     @block_signal
     def on_js_sync_queue(self, change):
@@ -151,16 +199,14 @@ class SchedulerInterface(SchedulerForm):
         self.update_job_view()
 
     def update_job_view(self):
-        job_list_label = None
         for i, lst in enumerate(self.job_lists):
             if lst.select.index is not None:
                 self.job_view.update_view(lst.item_list[lst.select.index],
                                           self.job_list_labels[i])
                 return
 
-        self.job_view.set_mode(job_list_label)
-
-
+        self.job_view.set_mode("queue", empty=True)
+        self.control_dicard_job_bt()
 
 class VisualizerInterface(VisualizerForm):
     def __init__(self, play_queue_bt):
