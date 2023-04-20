@@ -14,24 +14,27 @@ class SchedulerInterface(SchedulerForm):
 
         self.load_configs_bt.observe(self.on_load_configs, names="value")
         self.save_configs_bt.on_click(self.on_save_configs)
+        self.save_configs_bt.disabled = True
         self.save_results_bt.on_click(self.on_save_results)
+        self.save_results_bt.disabled = True
         self.discard_func_bt.on_click(self.on_discard_func)
         self.discard_func_bt.disabled = True
-        iw.dlink((self.discard_config_bt, "disabled"),
-                 (self.save_configs_bt, "disabled"))
         self.discard_config_bt.on_click(self.on_discard_config)
         self.discard_config_bt.disabled = True
 
         self.play_queue_bt.observe(self.on_play_queue, names="value")
         self.discard_job_bt.on_click(self.on_discard_job_bt)
-        self.discard_job_bt.disabled = True
+        self.dl2 = iw.dlink((self.job_view.pick_bt, "disabled"),
+                            (self.discard_job_bt, "disabled"))
 
         self.config_list.select.observe(self.on_config_change, names="index")
+        self.config_list.select.observe(self.on_config_change_options, names="options")
         self.func_list.select.observe(self.on_func_change, names="index")
 
         self.queue_list.select.observe(self.on_queue_change, names="index")
         self.busy_list.select.observe(self.on_busy_change, names="index")
         self.result_list.select.observe(self.on_result_change, names="index")
+        self.result_list.select.observe(self.on_result_change_options, names="options")
 
         # only config view
         self.config_job_view.queue_bt.on_click(self.on_queue_bt)
@@ -50,6 +53,9 @@ class SchedulerInterface(SchedulerForm):
         self.job_scheduler.sync_queue.observe(self.on_js_sync_queue, names="value")
         self.job_scheduler.sync_busy.observe(self.on_js_sync_busy, names="value")
         self.job_scheduler.sync_done.observe(self.on_js_sync_done, names="value")
+        self.job_scheduler_lists = [self.job_scheduler.queue_jobs,
+                                    self.job_scheduler.busy_jobs,
+                                    self.job_scheduler.done_jobs]
 
         self._block_signal = False
 
@@ -91,12 +97,11 @@ class SchedulerInterface(SchedulerForm):
     def on_discard_job_bt(self, change):
         for i, lst in enumerate(self.job_lists):
             if lst.select.index is not None:
-                if i == 0 and not self.job_scheduler.is_running:
-                    self.job_scheduler.queue_jobs.pop(lst.select.index)
-                    self.on_js_sync_queue(None)
-                elif i == 2:
-                    self.job_scheduler.done_jobs.pop(lst.select.index)
-                    self.on_js_sync_done(None)
+                self.job_scheduler_lists[i].pop(lst.select.index)
+                sync_handl = [self.on_js_sync_queue,
+                              self.on_js_sync_busy,
+                              self.on_js_sync_done][i]
+                sync_handl(None)
 
     @on_unblocked_signal
     def on_func_change(self, change):
@@ -107,6 +112,9 @@ class SchedulerInterface(SchedulerForm):
     def on_config_change(self, change):
         self.setup_new_job()
         self.discard_config_bt.disabled = change["new"] is None
+
+    def on_config_change_options(self, change):
+        self.save_configs_bt.disabled = len(change["new"]) == 0
 
     def setup_new_job(self):
         f_idx = self.func_list.select.index
@@ -130,6 +138,9 @@ class SchedulerInterface(SchedulerForm):
     def on_result_change(self, change):
         self.view_new_job(2, change["new"])
 
+    def on_result_change_options(self, change):
+        self.save_results_bt.disabled = len(change["new"]) == 0
+
     def view_new_job(self, list_index, item_index):
         if item_index is None:
             return
@@ -143,23 +154,6 @@ class SchedulerInterface(SchedulerForm):
             self.job_view.update_view(new_job, self.job_list_labels[list_index])
         except IndexError:
             warnings.warn("Can not show job: index out of range!")
-
-        self.control_dicard_job_bt()
-
-    def control_dicard_job_bt(self):
-        if not hasattr(self.job_view, "job"):
-            return
-
-        if self.job_view.job in self.queue_list.item_list:
-            self.discard_job_bt.disabled = self.job_scheduler.is_running
-        elif self.job_view.job in self.busy_list.item_list:
-            self.discard_job_bt.disabled = True
-        elif self.job_view.job in self.result_list.item_list:
-            self.discard_job_bt.disabled = False
-        elif all([lst.select.index is None for lst in self.job_lists]):
-            self.discard_job_bt.disabled = True
-        else:
-            warnings.warn("Something went wrong!")
 
     def on_cjv_pick_bt(self, change):
         self.add_config(self.config_job_view.get_config())
@@ -212,7 +206,6 @@ class SchedulerInterface(SchedulerForm):
                 return
 
         self.job_view.set_mode("queue", empty=True)
-        self.control_dicard_job_bt()
 
 class VisualizerInterface(VisualizerForm):
     def __init__(self, play_queue_bt):

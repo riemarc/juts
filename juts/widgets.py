@@ -365,7 +365,7 @@ class SchedulerForm(iw.VBox):
 
         self.load_configs_bt = iw.FileUpload(
             description="Load Config(s)", icon="upload", multiple=True,
-            layout=head_it_layout("load_config_button"))
+            accept=".yml,.yaml", layout=head_it_layout("load_config_button"))
         self.save_configs_bt = iw.Button(
             description="Save Config(s)", icon="save",
             layout=head_it_layout("save_config_button"))
