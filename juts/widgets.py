@@ -5,6 +5,7 @@ from abc import abstractmethod, ABCMeta
 from threading import Thread, Event
 from collections import OrderedDict
 from ast import literal_eval
+from threading import Timer
 import ipywidgets as iw
 import numpy as np
 import time
@@ -124,6 +125,11 @@ class JobView(iw.VBox):
         self.view_empty = True
         self.results_empty = True
 
+        self.valid_icon = iw.Valid()
+        self.valid_icon.layout.visibility = "hidden"
+        self.valid_timer = None
+        self.header = iw.HBox([self.label, self.valid_icon])
+
         super().__init__(children=[])
 
     def update_view(self, job, source_list):
@@ -151,28 +157,26 @@ class JobView(iw.VBox):
             self.text.disabled = False
             accordion = [self.config_view]
             accordion_title = ["Configuration"]
-            self.children = [self.label, self.header_box, self.accordion]
+            self.children = [self.header, self.header_box, self.accordion]
 
         # TODO: disable discard_bt on run
         elif source_list == "queue":
             header = [self.text, self.add_to_visu_bt, self.pick_bt,
                       self.save_config_bt, self.save_result_bt]
             self.text.disabled = True
-            self.add_to_visu_bt.disabled = True
             self.save_result_bt.disabled = True
             accordion = [self.config_view]
             accordion_title = ["Configuration"]
-            self.children = [self.label, self.header_box, self.accordion]
+            self.children = [self.header, self.header_box, self.accordion]
 
         elif source_list == "busy":
             header = [self.text, self.add_to_visu_bt, self.pick_bt,
                       self.save_config_bt, self.save_result_bt]
             self.text.disabled = True
-            self.add_to_visu_bt.disabled = True
             self.save_result_bt.disabled = True
             accordion = [self.config_view, self.log_view]
             accordion_title = ["Configuration", "Log"]
-            self.children = [self.label, self.header_box, self.job.progress,
+            self.children = [self.header, self.header_box, self.job.progress,
                              self.accordion]
 
         elif source_list == "result":
@@ -181,7 +185,7 @@ class JobView(iw.VBox):
                       self.save_config_bt, self.save_result_bt]
             accordion = [self.config_view, self.result_view, self.log_view]
             accordion_title = ["Configuration", "Result", "Log"]
-            self.children = [self.label, self.header_box,
+            self.children = [self.header, self.header_box,
                              self.accordion]
             self.results_empty = False
 
@@ -211,6 +215,19 @@ class JobView(iw.VBox):
 
         return Job(func, config, name=self.text.value)
 
+    # TODO: move to separate class to avoid code doubling
+    def raise_icon(self, valid, text, hold=False, t_show=5):
+        self.valid_icon.value = valid
+        self.valid_icon.readout = text
+        self.valid_icon.layout.visibility = None
+        if hold:
+            return
+
+        def hide():
+            self.valid_icon.layout.visibility = "hidden"
+
+        self.valid_timer = Timer(t_show, hide).start()
+
 
 class DownloadView(iw.VBox):
     def __init__(self):
@@ -228,6 +245,7 @@ class DownloadView(iw.VBox):
 class PlotView(iw.VBox):
     def __init__(self):
         self.label = iw.Label("Plot View")
+        self.label.layout.visibility = "hidden"
         self.plots = dict()
 
         super().__init__([self.label, iw.HBox()])
@@ -245,6 +263,10 @@ class PlotView(iw.VBox):
                 children.append(widget)
 
         self.children[1].children = tuple(children)
+        if len(children) == 0:
+            self.label.layout.visibility = "hidden"
+        else:
+            self.label.layout.visibility = None
 
 
 class ItemList(iw.VBox):
@@ -269,7 +291,12 @@ class ItemList(iw.VBox):
         else:
             raise NotImplementedError
 
-        super().__init__([self.label, self.select], **kwargs)
+        self.valid_icon = iw.Valid()
+        self.valid_icon.layout.visibility = "hidden"
+        self.valid_timer = None
+        self.header = iw.HBox([self.label, self.valid_icon])
+
+        super().__init__([self.header, self.select], **kwargs)
 
     @staticmethod
     def get_item_str(it):
@@ -314,6 +341,19 @@ class ItemList(iw.VBox):
             self.select.index = None
         else:
             self.select.index = tuple()
+
+    # TODO: move to separate class to avoid code doubling
+    def raise_icon(self, valid, text, hold=False, t_show=5):
+            self.valid_icon.value = valid
+            self.valid_icon.readout = text
+            self.valid_icon.layout.visibility = None
+            if hold:
+                return
+
+            def hide():
+                self.valid_icon.layout.visibility = "hidden"
+
+            self.valid_timer = Timer(t_show, hide).start()
 
 
 class FunctionList(ItemList):
@@ -454,7 +494,10 @@ class SchedulerForm(iw.VBox):
         if not isinstance(config, Configuration):
             raise ValueError("Configuration has to be provided as object of "
                              "the type juts.Configuration.")
-        self.config_list.append_items([config])
+        if config.name in self.config_list.select.options:
+            self.config_list.raise_icon(False, "config names must be unique")
+        else:
+            self.config_list.append_items([config])
 
     def add_configs(self, configs):
         for config in configs:
@@ -468,22 +511,21 @@ class VisualizerForm(iw.GridBox):
         self.discard_job_bt = iw.Button(
             description="Discard Job(s)", icon="remove",
             layout=head_it_layout("discard_job_button"))
+        self.discard_job_bt.disabled = True
         self.job_list = VisuJobList(
             "Jobs", tuple(), layout=head_it_layout("job_list"))
 
         self.create_plot_bt = iw.Button(
             description="Create Plot", icon="play",
             layout=head_it_layout("create_button"))
+        self.create_plot_bt.disabled = True
         self.widget_list = PlotWidgetList(
             "Plot Widgets", tuple(), layout=head_it_layout("widget_list"))
-        self.valid_icon = iw.Valid(value=True)
-        widget_list_header = iw.HBox([self.widget_list.label, self.valid_icon])
-        self.widget_list.children = tuple(
-            [widget_list_header, self.widget_list.select])
 
         self.discard_plot_bt = iw.Button(
             description="Discard Plot(s)", icon="remove",
             layout=head_it_layout("discard_plot_button"))
+        self.discard_plot_bt.disabled = True
         self.plot_list = PlotList(
             "Plots", tuple(), layout=head_it_layout("plot_list"))
 
@@ -504,8 +546,8 @@ class VisualizerForm(iw.GridBox):
             grid_template_columns='15.7% 15.7% 15.7% 15.7% 15.7% 15.7%',
             grid_gap='0% 1%',
             grid_template_areas='''
-                "run_button discard_job_button create_button create_button discard_plot_button discard_plot_button "
                 "job_list job_list widget_list widget_list plot_list plot_list "
+                "run_button discard_job_button create_button create_button discard_plot_button discard_plot_button "
                 "spacer spacer spacer spacer spacer spacer "
                 "plot_view plot_view plot_view plot_view plot_view plot_view "
                 ''')

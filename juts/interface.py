@@ -164,10 +164,21 @@ class SchedulerInterface(SchedulerForm):
     def on_jv_pick_bt(self, change):
         self.add_config(self.job_view.get_config())
 
+    def get_visible_job_names(self):
+        return list(self.queue_list.select.options) + \
+            list(self.busy_list.select.options) + \
+            list(self.result_list.select.options)
+
     @block_signal
     def on_queue_bt(self, change):
         assert self.config_job_view.source_list == "config"
         job = self.config_job_view.get_job()
+        visible_jobs = self.get_visible_job_names()
+        if job.name in visible_jobs:
+            i = 1
+            while f"{job.name}_{i}" in visible_jobs:
+                i += 1
+            job.name = f"{job.name}_{i}"
         self.job_scheduler.append_queue_job(job)
 
     def on_cjv_save_config_bt(self, change):
@@ -212,43 +223,54 @@ class VisualizerInterface(VisualizerForm):
     def __init__(self, play_queue_bt):
         super().__init__(play_queue_bt)
 
-        self.create_plot_bt.on_click(self.on_create_plot_bt)
+        self.job_list.select.observe(self.on_job_change, names="index")
+        self.widget_list.select.observe(self.on_widget_change, names="index")
         self.plot_list.select.observe(self.on_plot_change, names="index")
+
+        self.discard_job_bt.on_click(self.on_discard_job_bt)
+        self.create_plot_bt.on_click(self.on_create_plot_bt)
+        self.discard_plot_bt.on_click(self.on_discard_plot_bt)
 
     def add_plot_widget(self, widget):
         self.widget_list.append_items([widget])
 
+    def update_create_plot_bt(self):
+        self.create_plot_bt.disabled = (
+                len(self.job_list.select.index) == 0
+                or
+                self.widget_list.select.index is None
+        )
+
+    def on_job_change(self, change):
+        self.discard_job_bt.disabled = len(change["new"]) == 0
+        self.update_create_plot_bt()
+
+    def on_widget_change(self, change):
+        self.update_create_plot_bt()
+
     def on_plot_change(self, change):
+        self.discard_plot_bt.disabled = len(change["new"]) == 0
         plots = [self.plot_list.item_list[i] for i in change["new"]]
         self.plot_view.sync_plots(plots)
+
+    def on_discard_job_bt(self, change):
+        for idx in self.job_list.select.index:
+            self.job_list.pop_item(idx)
+
+    def on_discard_plot_bt(self, change):
+        for idx in self.plot_list.select.index:
+            self.plot_list.pop_item(idx)
 
     def on_create_plot_bt(self, change):
         indices = self.job_list.select.index
         jobs = [self.job_list.item_list[i] for i in indices]
-
-        if self.widget_list.select.index is None:
-            self.valid_icon.value = False
-            self.valid_icon.readout = "select a widget"
-
-            return
-
-        if len(self.job_list.select.index) ==  0:
-            self.valid_icon.value = False
-            self.valid_icon.readout = "select a job"
-
-            return
-
         pwidget = self.widget_list.item_list[self.widget_list.select.index]
         plot = pwidget(jobs)
         if plot.jobs_valid:
             plot.start()
             self.plot_list.append_items([plot])
-            self.valid_icon.value = True
-
         else:
-            self.valid_icon.value = False
-            self.valid_icon.readout = "not compatible"
-
+            self.job_list.raise_icon(False, "jobs not compatible")
 
 
 class UserInterface(UserInterfaceForm):
@@ -266,8 +288,12 @@ class UserInterface(UserInterfaceForm):
                 job_list = lst
 
         if job_list is None:
-            raise NotImplementedError
+            return
+        if job_list.select.index is None:
+            return
 
-        index = job_list.select.index
-        job = job_list.item_list[index]
-        self.visualizer.job_list.append_items([job])
+        job = job_list.item_list[job_list.select.index]
+        if job.name in self.visualizer.job_list.select.options:
+            self.scheduler.job_view.raise_icon(False, "job already added to visualizer")
+        else:
+            self.visualizer.job_list.append_items([job])
