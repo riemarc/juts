@@ -53,8 +53,9 @@ class TimeSeriesPlot(Plot):
                 y.append(list(
                     self.jobs[index].result[res_name][-self.n_points.value:]))
 
-            self.figures[res_name].marks[0].x = x
-            self.figures[res_name].marks[0].y = y
+            if len(x) > 0 and len(x[0]) > 1:
+                self.figures[res_name].marks[0].x = x
+                self.figures[res_name].marks[0].y = y
 
     def result_structure_changed(self):
         indices = OrderedDict()
@@ -209,7 +210,7 @@ class TimeSeriesReplayPlot(TimeSeriesPlot):
                 scales={'x': figure.marks[0].scales["x"],
                         'y': figure.marks[0].scales["y"]},
                 display_legend=False,
-                x = [self.replay_panel.current_time()] * 2,
-                y = [np.min(min_values), np.max(max_values)]
-                )
+                x=[self.replay_panel.current_time()] * 2,
+                y=[np.min(min_values), np.max(max_values)]
+            )
             figure.marks = [figure.marks[0], line]
