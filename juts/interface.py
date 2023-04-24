@@ -1,7 +1,7 @@
 from .container import JobScheduler, Job, Configuration, \
     load_configs_from_file, block_signal, on_unblocked_signal, \
     dump_configurations, get_filename, \
-    load_configs_from_file_upload
+    load_configs_from_file_upload, Signal
 from .widgets import SchedulerForm, VisualizerForm, UserInterfaceForm
 from IPython.display import FileLink
 import ipywidgets as iw
@@ -38,6 +38,8 @@ class SchedulerInterface(SchedulerForm):
 
         # only config view
         self.config_job_view.queue_bt.on_click(self.on_queue_bt)
+        self.job_queued = Signal()
+        self.queued_job = None
 
         # config + job view
         self.config_job_view.pick_bt.on_click(self.on_cjv_pick_bt)
@@ -180,6 +182,8 @@ class SchedulerInterface(SchedulerForm):
                 i += 1
             job.name = f"{job.name}_{i}"
         self.job_scheduler.append_queue_job(job)
+        self.queued_job = job
+        self.job_queued()
 
     def on_cjv_save_config_bt(self, change):
         self.on_save_config_bt(self.config_job_view.get_config())
@@ -280,6 +284,8 @@ class UserInterface(UserInterfaceForm):
         super().__init__(scheduler, visualizer)
 
         self.scheduler.job_view.add_to_visu_bt.on_click(self.on_add_to_visu)
+        self.scheduler.job_queued.observe(self.on_job_queued, names="value")
+        self.auto_add_to_visu = False
 
     def on_add_to_visu(self, change):
         job_list = None
@@ -292,8 +298,17 @@ class UserInterface(UserInterfaceForm):
         if job_list.select.index is None:
             return
 
-        job = job_list.item_list[job_list.select.index]
+        self.add_to_visu(job_list.item_list[job_list.select.index])
+
+    def add_to_visu(self, job):
         if job.name in self.visualizer.job_list.select.options:
             self.scheduler.job_view.raise_icon(False, "job already added to visualizer")
         else:
             self.visualizer.job_list.append_items([job])
+
+    def on_job_queued(self, change):
+        if self.auto_add_to_visu:
+            self.add_to_visu(self.scheduler.queued_job)
+
+    def set_auto_add_to_visu(self, auto_add=True):
+        self.auto_add_to_visu = auto_add
