@@ -49,16 +49,11 @@ class ConfigurationView(iw.Accordion):
 
                 try:
                     text_value = literal_eval(param.value)
-                    use_last_valid = False
-
-                    if not Configuration.is_valid_parameter(text_value):
-                        use_last_valid = True
-
                 except (SyntaxError, TypeError, ValueError):
+                    # it is a string
+                    text_value = param.value
 
-                    use_last_valid = True
-
-                if use_last_valid:
+                if not Configuration.is_valid_parameter(text_value):
                     text_value = self.config[key][param.description]
                     param.value = str(text_value)
 
