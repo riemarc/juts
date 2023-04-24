@@ -1,4 +1,4 @@
-linear_control:
+linear_control_stable:
     system_parameters:
         J: 0.0135
         Ja: 0.0012
@@ -12,6 +12,36 @@ linear_control:
         vPWM: 24
         dPWM: 32767
         ue: 3.71
+    
+    control_parameters:
+        poles: [-4, -3, -2, -1]
+        rest: "stable"
+
+    simulation_parameters:
+        x0: [2, 0, 0, 0]
+        t_span: [0, 10]
+        n_points: 1000
+        
+linear_control_instable:
+    system_parameters:
+        J: 0.0135
+        Ja: 0.0012
+        m: 0.416
+        l: 0.175
+        k: 0.0346
+        Ra: 5.78
+        g: 9.81
+        dPsiEncoder: 4096
+        dPhiEncoder: 2000
+        vPWM: 24
+        dPWM: 32767
+        ue: 3.71
+    
+    control_parameters:
+        poles: [-0.4, -0.3, -0.2, -0.1]
+        rest: "instable"
 
     simulation_parameters:
         x0: [1, 0, 0, 0]
+        t_span: [0, 10]
+        n_points: 1000
