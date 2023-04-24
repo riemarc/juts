@@ -1,3 +1,5 @@
+import warnings
+
 from .widgets import Plot, ReplayPanel
 from collections import OrderedDict
 from numbers import Number
@@ -53,9 +55,22 @@ class TimeSeriesPlot(Plot):
                 y.append(list(
                     self.jobs[index].result[res_name][-self.n_points.value:]))
 
-            if len(x) > 0 and len(x[0]) > 1:
-                self.figures[res_name].marks[0].x = x
-                self.figures[res_name].marks[0].y = y
+            if any([len(xi) != len(yi) for xi, yi in zip(x, y)]):
+                raise ValueError("X (time) and Y data have different shapes.")
+
+            if not(len(x) > 0 and any([len(xi) > 1 for xi in x])):
+                return
+
+            xx = np.empty((len(x), max([len(xi) for xi in x])), float)
+            xx[:] = np.nan
+            yy = np.array(xx)
+            for i, xi in enumerate(x):
+                xx[i, :len(xi)] = xi
+            for i, yi in enumerate(y):
+                yy[i, :len(yi)] = yi
+
+            self.figures[res_name].marks[0].x = xx
+            self.figures[res_name].marks[0].y = yy
 
     def result_structure_changed(self):
         indices = OrderedDict()
