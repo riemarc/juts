@@ -22,6 +22,7 @@ class SchedulerInterface(SchedulerForm):
         self.discard_config_bt.on_click(self.on_discard_config)
         self.discard_config_bt.disabled = True
 
+        self.n_kernels.observe(self.on_n_kernels, names="value")
         self.play_queue_bt.observe(self.on_play_queue, names="value")
         self.discard_job_bt.on_click(self.on_discard_job_bt)
         self.dl2 = iw.dlink((self.job_view.pick_bt, "disabled"),
@@ -58,6 +59,12 @@ class SchedulerInterface(SchedulerForm):
         self.job_scheduler_lists = [self.job_scheduler.queue_jobs,
                                     self.job_scheduler.busy_jobs,
                                     self.job_scheduler.done_jobs]
+        if not self.job_scheduler.max_kernels > 0:
+            raise ValueError("No kernels available.")
+
+        self.n_kernels.max = self.job_scheduler.max_kernels
+        self.n_kernels.min = 1
+        self.n_kernels.value = self.job_scheduler.max_kernels
 
         self._block_signal = False
 
@@ -87,6 +94,9 @@ class SchedulerInterface(SchedulerForm):
     def on_discard_config(self, change):
         self.config_list.pop_item()
         self.setup_new_job()
+
+    def on_n_kernels(self, change):
+        self.job_scheduler.available_kernels = self.n_kernels.value
 
     def on_play_queue(self, change):
         if change["new"]:

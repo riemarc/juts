@@ -422,6 +422,14 @@ class SchedulerForm(iw.VBox):
         self.config_job_view.layout = head_it_layout("config_job_view")
         self.config_job_view.set_mode("config", empty=True)
 
+        self.n_kernels = iw.BoundedIntText(
+            value=0,
+            min=0,
+            max=1,
+            step=1,
+            description='Number of max. parallel jobs:',
+            style={'description_width': 'initial'},
+            layout=head_it_layout("kernel_text"))
         self.play_queue_bt = iw.ToggleButton(
             description="Run", icon="play",
             layout=head_it_layout("run_button"))
@@ -449,7 +457,7 @@ class SchedulerForm(iw.VBox):
 
         grid_layout = iw.Layout(
             width='100%',
-            grid_template_rows=" ".join(["auto"]*12),
+            grid_template_rows=" ".join(["auto"]*13),
             grid_template_columns=" ".join(["12%"]*8),
             grid_gap='0% 0.5%',
             grid_template_areas='''
@@ -459,7 +467,8 @@ class SchedulerForm(iw.VBox):
                 "func_list func_list func_list config_list config_list config_list delete_config_button delete_config_button"
                 "func_list func_list func_list config_list config_list config_list delete_func_button delete_func_button"
                 "config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view config_job_view"
-                "queue_list queue_list busy_list busy_list result_list result_list . ."
+                "queue_list queue_list busy_list busy_list result_list result_list . ." 
+                "queue_list queue_list busy_list busy_list result_list result_list kernel_text kernel_text"
                 "queue_list queue_list busy_list busy_list result_list result_list run_button run_button"
                 "queue_list queue_list busy_list busy_list result_list result_list save_result_button save_result_button"
                 "queue_list queue_list busy_list busy_list result_list result_list discard_job_button discard_job_button"
@@ -469,7 +478,7 @@ class SchedulerForm(iw.VBox):
         grid_items = [self.load_configs_bt, self.save_configs_bt,
                       self.discard_config_bt, self.discard_func_bt,
                       self.config_list, self.func_list, self.config_job_view,
-                      self.play_queue_bt, self.discard_job_bt,
+                      self.play_queue_bt, self.discard_job_bt, self.n_kernels,
                       self.save_results_bt, self.busy_list, self.queue_list,
                       self.result_list, self.job_view, self.download_view]
         conf_grid = iw.GridBox(grid_items, layout=grid_layout)

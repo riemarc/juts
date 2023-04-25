@@ -251,6 +251,9 @@ class JobScheduler(Thread):
 
         self.is_running = False
 
+        self.max_kernels = cpu_count()
+        self.available_kernels = self.max_kernels
+
     def append_queue_job(self, job):
         self.queue_jobs.append(job)
         self.sync_queue()
@@ -282,7 +285,7 @@ class JobScheduler(Thread):
 
     def process_queue(self):
         # if len(os.sched_getaffinity(0)) > 0:
-        if len(self.busy_jobs) < cpu_count():
+        if len(self.busy_jobs) < self.available_kernels:
             job = self.queue_jobs.pop(0)
             self.sync_queue()
 
