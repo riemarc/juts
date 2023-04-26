@@ -4,15 +4,16 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-notebook = "*"
+juts = {editable = true, path = "."}
+scipy = "*"
+jupyterlab = "*"
 ipywidgets = "*"
 bqplot = "*"
-yamlordereddictloader = "*"
-juts = {editable = true, path = "."}
-jupyterlab = "*"
 ipympl = "*"
-control = "*"
 ipyvolume = "*"
+yamlordereddictloader = "*"
+nbconvert = "*"
+nbstripout = "*"
 
 [dev-packages]
 
