@@ -7,7 +7,7 @@ def read_file(filename):
         return file.read()
 
 
-description = read_file("readme.md")
+description = read_file("Readme.md")
 
 setuptools.setup(
     name="juts",

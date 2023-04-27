@@ -1,0 +1,9 @@
+scipy
+jupyterlab
+ipywidgets
+bqplot
+ipympl
+ipyvolume
+yamlordereddictloader
+nbconvert
+nbstripout
