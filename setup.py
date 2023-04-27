@@ -11,7 +11,7 @@ description = read_file("Readme.md")
 
 setuptools.setup(
     name="juts",
-    version="2023.1",
+    version="2023.3",
     author="Marcus Riesmeier",
     author_email="gluehen-sierren-0c@icloud.com",
     license="BSD 3-Clause License",
