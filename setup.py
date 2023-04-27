@@ -1,10 +1,13 @@
 import setuptools
+import os
 
-description = ("Usecase of jupyter notebook widgets "
-               "amongst others to visualize time series data.")
 
-with open("requirements.txt") as f:
-    requirements = f.read().splitlines()
+def read_file(filename):
+    with open(os.path.join(os.path.dirname(__file__), filename)) as file:
+        return file.read()
+
+
+description = read_file("readme.md")
 
 setuptools.setup(
     name="juts",
@@ -12,10 +15,10 @@ setuptools.setup(
     author="Marcus Riesmeier",
     author_email="gluehen-sierren-0c@icloud.com",
     license="BSD 3-Clause License",
-    description=description,
+    description=description.splitlines()[0],
     long_description=description,
     packages=setuptools.find_packages(),
-    install_requires=requirements,
+    install_requires=read_file("requirements.txt"),
     classifiers=(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: BSD License",
