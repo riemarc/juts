@@ -15,6 +15,7 @@ function and a configuration. The function contains the code (machine learning,
 simulation, ....) to be executed,
 for [example](juts/examples/minimal_example.ipynb):
 ```
+import time as tim
 def wait_n_times_x_ms(config, process_queue=None, return_dict=None):
     n = config["parameter"]["n"]
     x = config["parameter"]["x"]
