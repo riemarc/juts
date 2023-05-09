@@ -37,6 +37,9 @@ wait_10_times_300_ms:
         x: 0.3
 ```
 or can be defined as python dictionary.
+
 [Screencast from 09.05.2023 13:35:58.webm](https://github.com/riemarc/juts/assets/18379817/e0aae907-8cf1-4958-9e8e-42dc5024e16a)
+
 Also live data can be monitored during script execution:
+
 [Screencast from 09.05.2023 13:37:38.webm](https://github.com/riemarc/juts/assets/18379817/bc3878a8-29fa-457f-b6f8-3287c849405e)
