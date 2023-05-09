@@ -3,14 +3,17 @@
 
 # Juts
 
-**Ju**pyter widgets for scheduling processes and visualizing the resulting (live) data.
-While it is designed to use custom data-specific visualizations (plot widgets) based on
-ipywidgets, visualizations for **t**ime **s**eries data (bqplot), animations
-(matplotlib) and 3D data (ipyvolume) are included.
+**Ju**pyter widgets for scheduling processes and visualizing the resulting
+(live) data. While it is designed to use custom data-specific visualizations
+(plot widgets) based on ipywidgets, visualizations for **t**ime **s**eries data
+(bqplot), animations (matplotlib) and 3D data (ipyvolume) are included.
 
 ## Quickstart
 
-To start a process a so called job has to be setup. A job consists of a python function and a configuration. The function contains the code (machine learning, simulation, ....) to be executed, for [example](juts/examples/minimal_example.ipynb):
+To start a process a so-called job has to be set up. A job consists of a Python
+function and a configuration. The function contains the code (machine learning,
+simulation, ....) to be executed,
+for [example](juts/examples/minimal_example.ipynb):
 ```
 def wait_n_times_x_ms(config, process_queue=None, return_dict=None):
     n = config["parameter"]["n"]
@@ -55,7 +58,7 @@ wheel pendulum under state feedback control.
 
 [Screencast pendulum.webm](https://github.com/riemarc/juts/assets/18379817/3e8c9edc-12aa-496f-ba14-4c0adc677900)
 
-Widgets can be easily connected, if required:
+Widgets can be easily connected if required:
 
 [Screencast pendulum link.webm](https://github.com/riemarc/juts/assets/18379817/cb8567b2-4ec8-4d9c-9f09-1cb466accbb7)
 
@@ -69,6 +72,7 @@ simulation data with the measurements from a real pendulum.
 
 ## Visualizing 3D data
 
-An example plot widget to view 3D data is also included. This one relies on [ipyvolume](https://github.com/widgetti/ipyvolume).
+An example plot widget to view 3D data is also included.
+This one relies on [ipyvolume](https://github.com/widgetti/ipyvolume).
 
 [Screencast 3d.webm](https://github.com/riemarc/juts/assets/18379817/637269ed-9e42-4dce-8054-e64aafbd48ca)
