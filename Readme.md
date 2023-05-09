@@ -1,3 +1,6 @@
+[![name](https://img.shields.io/pypi/v/juts?label=pypi%20package)](https://pypi.org/project/juts)
+[![name](https://img.shields.io/pypi/dm/juts)](https://pypi.org/project/juts)
+
 # Juts
 
 **Ju**pyter widgets for scheduling processes and visualizing the resulting (live) data.
@@ -43,3 +46,16 @@ or can be defined as python dictionary.
 Also live data can be monitored during script execution:
 
 [Screencast from 09.05.2023 13:37:38.webm](https://github.com/riemarc/juts/assets/18379817/bc3878a8-29fa-457f-b6f8-3287c849405e)
+
+
+## A simulation example
+
+A more practical relevant example is the following simulation of a reaction
+wheel pendulum under state feedback control.
+
+Widgets can be easily connected, if required:
+
+Since the simulation runs quite
+fast, a loop was put after it which sends the data with a delay. This shows that
+a job could also record live data from an experiment, so one could compare the
+simulation data with the measurements from a real pendulum.
