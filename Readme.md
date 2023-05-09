@@ -65,3 +65,10 @@ a job could also record live data from an experiment, so one could compare the
 simulation data with the measurements from a real pendulum.
 
 [Screencast pendulum live.webm](https://github.com/riemarc/juts/assets/18379817/f8759a47-58ba-43f3-8196-8e319ea82b65)
+
+
+## Visualizing 3D data
+
+An example plot widget to view 3D data is also included. This one relies on [ipyvolume](https://github.com/widgetti/ipyvolume).
+
+[Screencast 3d.webm](https://github.com/riemarc/juts/assets/18379817/637269ed-9e42-4dce-8054-e64aafbd48ca)
