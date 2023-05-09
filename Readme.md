@@ -41,11 +41,11 @@ wait_10_times_300_ms:
 ```
 or can be defined as python dictionary.
 
-[Screencast from 09.05.2023 13:35:58.webm](https://github.com/riemarc/juts/assets/18379817/e0aae907-8cf1-4958-9e8e-42dc5024e16a)
+[Screencast min example.webm](https://github.com/riemarc/juts/assets/18379817/0fa83a34-cefd-4f1e-99e9-49642ab31963)
 
 Also live data can be monitored during script execution:
 
-[Screencast from 09.05.2023 13:37:38.webm](https://github.com/riemarc/juts/assets/18379817/bc3878a8-29fa-457f-b6f8-3287c849405e)
+[Screencast min example live.webm](https://github.com/riemarc/juts/assets/18379817/99211beb-424d-4841-bc71-953307306967)
 
 
 ## A simulation example
@@ -53,9 +53,15 @@ Also live data can be monitored during script execution:
 A more practical relevant example is the following simulation of a reaction
 wheel pendulum under state feedback control.
 
+[Screencast pendulum.webm](https://github.com/riemarc/juts/assets/18379817/3e8c9edc-12aa-496f-ba14-4c0adc677900)
+
 Widgets can be easily connected, if required:
+
+[Screencast pendulum link.webm](https://github.com/riemarc/juts/assets/18379817/cb8567b2-4ec8-4d9c-9f09-1cb466accbb7)
 
 Since the simulation runs quite
 fast, a loop was put after it which sends the data with a delay. This shows that
 a job could also record live data from an experiment, so one could compare the
 simulation data with the measurements from a real pendulum.
+
+[Screencast pendulum live.webm](https://github.com/riemarc/juts/assets/18379817/f8759a47-58ba-43f3-8196-8e319ea82b65)
