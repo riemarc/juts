@@ -16,6 +16,7 @@ setuptools.setup(
     author_email="gluehen-sierren-0c@icloud.com",
     license="BSD 3-Clause License",
     description="Jupyter widgets for scheduling processes and visualizing the resulting (live) data",
+    long_description_content_type="text/markdown",
     long_description=description,
     packages=setuptools.find_packages(),
     install_requires=read_file("requirements.txt"),
