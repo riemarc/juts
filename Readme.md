@@ -3,9 +3,9 @@
 
 # Juts
 
-**Ju**pyter widgets for scheduling processes and visualizing the resulting
+Jupyter widgets for scheduling processes and visualizing the resulting
 (live) data. While it is designed to use custom data-specific visualizations
-(plot widgets) based on ipywidgets, visualizations for **t**ime **s**eries data
+(plot widgets) based on ipywidgets, visualizations for time series data
 (bqplot), animations (matplotlib) and 3D data (ipyvolume) are included.
 
 ## Quickstart
