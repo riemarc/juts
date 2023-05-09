@@ -11,11 +11,11 @@ description = read_file("Readme.md")
 
 setuptools.setup(
     name="juts",
-    version="2023.3",
+    version="2023.4.1",
     author="Marcus Riesmeier",
     author_email="gluehen-sierren-0c@icloud.com",
     license="BSD 3-Clause License",
-    description=description.splitlines()[0],
+    description="Jupyter widgets for scheduling processes and visualizing the resulting (live) data",
     long_description=description,
     packages=setuptools.find_packages(),
     install_requires=read_file("requirements.txt"),
