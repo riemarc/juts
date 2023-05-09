@@ -14,6 +14,7 @@ To start a process a so-called job has to be set up. A job consists of a Python
 function and a configuration. The function contains the code (machine learning,
 simulation, ....) to be executed,
 for [example](juts/examples/minimal_example.ipynb):
+
 ```
 import time as tim
 def wait_n_times_x_ms(config, process_queue=None, return_dict=None):
@@ -31,7 +32,9 @@ def wait_n_times_x_ms(config, process_queue=None, return_dict=None):
                                time_series=i/x))
         tim.sleep(x)
 ```
+
 The configuration(s) can be read from a yaml file like [this](juts/examples/wait_n_times_x_ms.yml):
+
 ```
 wait_40_times_100_ms:
     parameter:
@@ -43,6 +46,7 @@ wait_10_times_300_ms:
         n: 10
         x: 0.3
 ```
+
 or can be defined as python dictionary.
 
 [Screencast min example.webm](https://github.com/riemarc/juts/assets/18379817/0fa83a34-cefd-4f1e-99e9-49642ab31963)
