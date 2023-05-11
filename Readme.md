@@ -49,11 +49,11 @@ wait_10_times_300_ms:
 
 or can be defined as python dictionary.
 
-[Screencast min example.webm](https://github.com/riemarc/juts/assets/18379817/0fa83a34-cefd-4f1e-99e9-49642ab31963)
+[Screencast min example.webm](https://github.com/riemarc/juts/assets/18379817/d711701a-4aea-4bd6-9d26-2e476c60b274)
 
 Also live data can be monitored during script execution:
 
-[Screencast min example live.webm](https://github.com/riemarc/juts/assets/18379817/99211beb-424d-4841-bc71-953307306967)
+[Screencast min example live.webm](https://github.com/riemarc/juts/assets/18379817/c5ac1676-ceae-42ea-a652-8128c4e4c466)
 
 
 ## A simulation example
@@ -61,18 +61,18 @@ Also live data can be monitored during script execution:
 A more practical relevant example is the following simulation of a reaction
 wheel pendulum under state feedback control.
 
-[Screencast pendulum.webm](https://github.com/riemarc/juts/assets/18379817/3e8c9edc-12aa-496f-ba14-4c0adc677900)
+[Screencast pendulum.webm](https://github.com/riemarc/juts/assets/18379817/f4cbbf97-d2cb-410d-a834-11c9422ddc27)
 
 Widgets can be easily connected if required:
 
-[Screencast pendulum link.webm](https://github.com/riemarc/juts/assets/18379817/cb8567b2-4ec8-4d9c-9f09-1cb466accbb7)
+[Screencast pendulum link.webm](https://github.com/riemarc/juts/assets/18379817/e6342830-6258-4ca1-b8ed-0b1654e03444)
 
 Since the simulation runs quite
 fast, a loop was put after it which sends the data with a delay. This shows that
 a job could also record live data from an experiment, so one could compare the
 simulation data with the measurements from a real pendulum.
 
-[Screencast pendulum live.webm](https://github.com/riemarc/juts/assets/18379817/f8759a47-58ba-43f3-8196-8e319ea82b65)
+[Screencast pendulum live.webm](https://github.com/riemarc/juts/assets/18379817/dc0edbe0-8b5a-424a-91bf-eef0b944d14b)
 
 
 ## Visualizing 3D data
@@ -80,4 +80,4 @@ simulation data with the measurements from a real pendulum.
 An example plot widget to view 3D data is also included.
 This one relies on [ipyvolume](https://github.com/widgetti/ipyvolume).
 
-[Screencast 3d.webm](https://github.com/riemarc/juts/assets/18379817/637269ed-9e42-4dce-8054-e64aafbd48ca)
+[Screencast 3d.webm](https://github.com/riemarc/juts/assets/18379817/762806cf-38b1-4f6d-ba5c-071bcbbcb9e2)
