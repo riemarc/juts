@@ -11,7 +11,7 @@ description = read_file("Readme.md")
 
 setuptools.setup(
     name="juts",
-    version="2023.4.1",
+    version="2023.4.2",
     url="https://github.com/riemarc/juts",
     author="Marcus Riesmeier",
     author_email="gluehen-sierren-0c@icloud.com",
