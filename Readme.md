@@ -58,8 +58,9 @@ Also live data can be monitored during script execution:
 
 ## A simulation example
 
-A more practical relevant example is the following simulation of a reaction
-wheel pendulum under state feedback control.
+A more practical relevant [example](juts/examples/reaction_wheel.ipynb)
+is the following simulation of a reaction wheel pendulum under state feedback
+control.
 
 [Screencast pendulum.webm](https://github.com/riemarc/juts/assets/18379817/f4cbbf97-d2cb-410d-a834-11c9422ddc27)
 
@@ -77,7 +78,8 @@ simulation data with the measurements from a real pendulum.
 
 ## Visualizing 3D data
 
-An example plot widget to view 3D data is also included.
+An example plot widget to view 3D data is also included, see
+[heat_equation.ipynb](juts/examples/heat_equation.ipynb).
 This one relies on [ipyvolume](https://github.com/widgetti/ipyvolume).
 
 [Screencast 3d.webm](https://github.com/riemarc/juts/assets/18379817/762806cf-38b1-4f6d-ba5c-071bcbbcb9e2)
